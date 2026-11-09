@@ -144,7 +144,8 @@ function visDetalje(id) {
       h("s-choice", { value: String(n), selected: (v.prisniveau || 1) === n }, "Niveau " + n + " — " + satser[n] + " % rabat")));
 
   $("detail").setAttribute("heading", v.firmanavn);
-  $("detail-body").replaceChildren(
+  // replaceChildren skriver null som tekst, så tomme dele sorteres fra først.
+  $("detail-body").replaceChildren(...[
     h("s-stack", { direction: "inline", gap: "small-200" },
       h("s-badge", { tone: s.tone }, s.tekst),
       v.prisniveau ? h("s-badge", {}, "Niveau " + v.prisniveau) : null,
@@ -165,7 +166,7 @@ function visDetalje(id) {
       ? h("s-paragraph", { color: "subdued" }, "Ansøgningen er afvist. Du kan stadig godkende den, hvis I har talt sammen.")
       : null,
     niveauVaelger,
-  );
+  ].filter(Boolean));
   $("approve").textContent = v.status === "godkendt" ? "Skift prisniveau" : "Godkend";
   // Polaris ser bort fra hidden, så knappen slås fra i stedet.
   if (v.status === "afvist") $("reject").setAttribute("disabled", "");
