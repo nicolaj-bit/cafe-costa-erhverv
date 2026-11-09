@@ -20,6 +20,7 @@
     <div id="side-ansoegninger" hidden>
       <s-page heading="Erhvervskunder" inlineSize="large">
         <s-button slot="primary-action" id="refresh">Opdatér</s-button>
+        <s-button slot="secondary-actions" href="/api/admin-indstillinger">Prisniveauer</s-button>
 
         <div id="error" hidden>
           <s-banner tone="critical" heading="Kunne ikke hente ansøgninger">
@@ -67,6 +68,7 @@
     <div id="side-indstillinger" hidden>
       <s-page heading="Prisniveauer" inlineSize="base">
         <s-button slot="primary-action" variant="primary" id="save">Gem</s-button>
+        <s-button slot="secondary-actions" href="/api/admin">Tilbage til ansøgninger</s-button>
         <div id="settings-error" hidden>
           <s-banner tone="critical" heading="Kunne ikke gemme">
             <s-paragraph id="settings-error-text"></s-paragraph>
