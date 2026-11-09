@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { HttpError, shopifyEnv, verifyAdminIdToken } from "@/lib/shopify.server";
-import { afvis, gemSatser, godkend, hentSatser, hentVirksomhed, listVirksomheder } from "@/lib/erhverv.server";
+import { afvis, gemSatser, godkend, hentSatser, hentVirksomhed, listVirksomheder, slet } from "@/lib/erhverv.server";
 
 // Data til ejerens side i Shopify admin. Kalderen skal sende App Bridges
 // ID token som Bearer — det er signeret med appens client secret og bevis på,
@@ -13,6 +13,7 @@ const kald = z.discriminatedUnion("action", [
   z.object({ action: z.literal("get"), id: z.string().min(1).max(64) }),
   z.object({ action: z.literal("godkend"), id: z.string().min(1).max(64), prisniveau: z.coerce.number().int().min(1).max(3) }),
   z.object({ action: z.literal("afvis"), id: z.string().min(1).max(64) }),
+  z.object({ action: z.literal("slet"), id: z.string().min(1).max(64) }),
   z.object({ action: z.literal("satser") }),
   z.object({ action: z.literal("gem-satser"), satser: z.record(z.string(), z.coerce.number()) }),
 ]);
@@ -34,6 +35,7 @@ export const Route = createFileRoute("/api/admin-data")({
             case "get": return json({ virksomhed: await hentVirksomhed(base44, b.id) });
             case "godkend": return json(await godkend(base44, env, b.id, b.prisniveau));
             case "afvis": return json(await afvis(base44, env, b.id));
+            case "slet": return json(await slet(base44, env, b.id));
             case "satser": return json(await hentSatser(env));
             case "gem-satser": return json(await gemSatser(env, b.satser));
           }

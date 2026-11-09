@@ -52,7 +52,7 @@ standardsatserne 10, 15 og 20 %, men checkout giver ingen rabat.
    link` overskriver `shopify.app.toml` med Shopifys standard og fjerner app
    proxy og kommentarer — gendan filen fra git bagefter.
 2. Base44 → appen → Dashboard → Secrets:
-   - `SHOPIFY_STORE_DOMAIN` = `costa-kalundborg.myshopify.com` (sat)
+   - `SHOPIFY_STORE_DOMAIN` = `costa-kalundborg-2amkkegx.myshopify.com` (sat). Brug butikkens interne myshopify-domæne, ikke `costa-kalundborg.myshopify.com`, som kun er en henvisning — ellers afvises tokenet med «Tokenet er til en anden butik»
    - `SHOPIFY_CLIENT_ID` = Client ID (sat)
    - `SHOPIFY_CLIENT_SECRET` = Client secret fra Dev Dashboard
 3. `npx shopify app deploy` — sender scopes, app proxy, temablokke og

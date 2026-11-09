@@ -212,6 +212,23 @@ async function afvis() {
   }
 }
 
+async function sletAnsoegning() {
+  if (!valgt) return;
+  if (!window.confirm("Slet ansøgningen fra " + valgt.firmanavn + "? Kunden bliver i Shopify, men mister erhvervsaftalen. Der sendes ingen mail.")) return;
+  const btn = $("delete");
+  btn.setAttribute("loading", "");
+  try {
+    await api("slet", { id: valgt.id });
+    $("detail").hideOverlay();
+    toast(valgt.firmanavn + " er slettet");
+    await load();
+  } catch (e) {
+    toast("Kunne ikke slette: " + e.message, true);
+  } finally {
+    btn.removeAttribute("loading");
+  }
+}
+
 // ------------------------------------------------------------------ Indstillinger
 
 function visRabat(res) {
@@ -264,5 +281,6 @@ if (side === "indstillinger") {
   $("status").addEventListener("change", renderRows);
   $("approve").addEventListener("click", godkend);
   $("reject").addEventListener("click", afvis);
+  $("delete").addEventListener("click", sletAnsoegning);
   load();
 }

@@ -7,7 +7,7 @@ Læs `README.md` først.
   hvordan. Afslut med en linje, der starter med `NÆSTE:`.
 - Arbejd på en gren og lav en draft-PR. Push aldrig direkte til `main`.
 - **Tjek butikken før hver skrivning til Shopify** (`get-shop-info`). Den
-  skal være `costa-kalundborg.myshopify.com`. Forbindelsen har før skiftet
+  skal være Costa (`costa-kalundborg-2amkkegx.myshopify.com`). Forbindelsen har før skiftet
   til Lalatotos live-butik uden varsel.
 - Ingen nøgler i repoet. Client secret står kun i Base44's secrets.
 - Serverkoden ligger i Base44 (app `6af2086e391faa45cbbca2d0`). `base44-app/`

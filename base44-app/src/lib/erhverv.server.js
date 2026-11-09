@@ -257,6 +257,19 @@ export async function afvis(base44, env, id) {
   return { virksomhed: opdateret, mail };
 }
 
+/**
+ * Sletter ansøgningen i Base44, f.eks. spam eller en test. Kunden i Shopify
+ * røres ikke — den kan have ordrer — men mister sine erhvervs-tags.
+ */
+export async function slet(base44, env, id) {
+  const v = await hentVirksomhed(base44, id);
+  if (v.shopify_customer_id) {
+    await fjernTags(env, v.shopify_customer_id, ALLE_STATUS_TAGS).catch(() => null);
+  }
+  await base44.asServiceRole.entities.Virksomhed.delete(id);
+  return { slettet: id };
+}
+
 // ---------------------------------------------------------------- Rabatsatser
 
 /**

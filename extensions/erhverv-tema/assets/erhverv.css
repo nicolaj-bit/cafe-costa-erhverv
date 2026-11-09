@@ -9,7 +9,7 @@
 .erhverv-form__group { border: 0; padding: 0; margin: 0; display: grid; gap: var(--costa-space-s); }
 .erhverv-form__group + .erhverv-form__group { padding-top: var(--costa-space-m); border-top: var(--costa-line); }
 .erhverv-form__group legend { margin-bottom: var(--costa-space-s); }
-.erhverv-form__row { display: grid; gap: var(--costa-space-s); grid-template-columns: 1fr; }
+.erhverv-form__row { display: grid; gap: var(--costa-space-s); grid-template-columns: 1fr; align-items: start; }
 @media (min-width: 750px) {
   .erhverv-form__row { grid-template-columns: 1fr 1fr; }
   .erhverv-form__row--zip { grid-template-columns: 9rem 1fr; }
