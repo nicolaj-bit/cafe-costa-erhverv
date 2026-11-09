@@ -16,7 +16,9 @@
       <a href="/api/admin-indstillinger">Prisniveauer</a>
     </ui-nav-menu>
 
-    <!-- Polaris' komponenter ser bort fra hidden, så hver side ligger i en div. -->
+    <!-- Serveren sender kun én af de to sider: Shopifys titellinje læser den
+         første s-page i dokumentet, også en skjult. -->
+    <!--SIDE:ansoegninger-->
     <div id="side-ansoegninger" hidden>
       <s-page heading="Erhvervskunder" inlineSize="large">
         <s-button slot="primary-action" id="refresh">Opdatér</s-button>
@@ -64,7 +66,9 @@
         <s-button slot="secondary-actions" id="delete">Slet</s-button>
       </s-modal>
     </div>
+    <!--/SIDE:ansoegninger-->
 
+    <!--SIDE:indstillinger-->
     <div id="side-indstillinger" hidden>
       <s-page heading="Prisniveauer" inlineSize="base">
         <s-button slot="primary-action" variant="primary" id="save">Gem</s-button>
@@ -92,6 +96,7 @@
         </s-section>
       </s-page>
     </div>
+    <!--/SIDE:indstillinger-->
 
     <script type="module">__CLIENT_JS__</script>
   </body>
