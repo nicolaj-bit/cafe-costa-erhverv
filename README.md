@@ -47,12 +47,13 @@ standardsatserne 10, 15 og 20 %, men checkout giver ingen rabat.
 
 ## Installér på udviklingsbutikken
 
-1. `npx shopify app config link` → «Create new app» i samme organisation som
-   `costa-kalundborg.myshopify.com`. Det skriver `client_id` i
-   `shopify.app.toml`.
+1. Appen er oprettet i organisationen LALATOTO of Denmark ApS
+   (Client ID `a7053cb43a97c70401eb8cbc11774f9f`). Pas på: `shopify app config
+   link` overskriver `shopify.app.toml` med Shopifys standard og fjerner app
+   proxy og kommentarer — gendan filen fra git bagefter.
 2. Base44 → appen → Dashboard → Secrets:
    - `SHOPIFY_STORE_DOMAIN` = `costa-kalundborg.myshopify.com` (sat)
-   - `SHOPIFY_CLIENT_ID` = Client ID fra Dev Dashboard
+   - `SHOPIFY_CLIENT_ID` = Client ID (sat)
    - `SHOPIFY_CLIENT_SECRET` = Client secret fra Dev Dashboard
 3. `npx shopify app deploy` — sender scopes, app proxy, temablokke og
    rabatfunktionen.
@@ -67,9 +68,20 @@ rigtige butik vælges *Custom distribution* i Dev Dashboard.
 
 ### Scopes
 
-`read_customers, write_customers, read_orders, read_products, write_discounts`.
-Ingen scopes til abonnementer eller betalingsmetoder — de kræver Shopifys
+`read_customers, write_customers, read_orders, read_products, write_discounts`
+og `write_app_proxy`. Det sidste kræver Shopify, fordi formularen går gennem
+app proxy — uden det afvises app-versionen. Ingen scopes til abonnementer eller betalingsmetoder — de kræver Shopifys
 godkendelse, og uden den fejler oprettelsen af app-versionen.
+
+### Byg i et miljø uden adgang til cdn.jsdelivr.net
+
+Shopify CLI henter `wasm-opt` derfra, når rabatfunktionen bygges. Er adressen
+spærret, så hent den fra npm i stedet:
+
+```bash
+npm pack binaryen@123.0.0 && tar xzf binaryen-123.0.0.tgz
+cp package/bin/wasm-opt node_modules/@shopify/cli/bin/wasm-opt.cjs
+```
 
 ## Mails
 

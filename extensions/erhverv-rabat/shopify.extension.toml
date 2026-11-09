@@ -2,7 +2,8 @@
 # og checkout og giver procentrabat ud fra kundens tag erhverv-niveau-1, -2
 # eller -3. Satserne ligger i rabattens metafelt, som appens side
 # «Prisniveauer» skriver. Virker uden Shopify Plus og uden native B2B.
-api_version = "2025-04"
+api_version = "2026-04"
+uid = "e0b1e5e3-7995-327d-1e21-1766c826112c85f32328"
 
 [[extensions]]
 name = "t:name"
