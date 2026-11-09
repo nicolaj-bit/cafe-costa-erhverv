@@ -1,0 +1,121 @@
+{%- comment -%}
+  Erhvervsansøgning. Sendes til /apps/erhverv, som Shopify sender videre til
+  Base44 med en signatur. Base44 kontrollerer CVR-nummeret, opretter kunden
+  med tagget erhverv-afventer og gemmer virksomheden.
+  Nyhedsbrevet er aldrig krydset af på forhånd: samtykke skal være aktivt.
+{%- endcomment -%}
+{%- assign uid = block.id -%}
+<div class="costa erhverv" {{ block.shopify_attributes }}>
+  <div class="costa__inner costa__inner--narrow">
+    {%- if block.settings.label != blank -%}<p class="costa-label">{{ block.settings.label | escape }}</p>{%- endif -%}
+    {%- if block.settings.heading != blank -%}<h2 class="erhverv__title">{{ block.settings.heading | escape }}</h2>{%- endif -%}
+    {%- if block.settings.intro != blank -%}<div class="costa-richtext erhverv__intro">{{ block.settings.intro }}</div>{%- endif -%}
+
+    <form class="costa-form erhverv-form" action="/apps/erhverv" method="post" data-erhverv-form novalidate>
+      <fieldset class="erhverv-form__group">
+        <legend class="costa-label">Virksomheden</legend>
+        <div class="erhverv-form__row">
+          <div class="costa-form__field">
+            <label for="Firma-{{ uid }}">Firmanavn</label>
+            <input id="Firma-{{ uid }}" name="firmanavn" type="text" autocomplete="organization" required maxlength="120">
+          </div>
+          <div class="costa-form__field">
+            <label for="Cvr-{{ uid }}">CVR-nummer</label>
+            <input id="Cvr-{{ uid }}" name="cvr" type="text" inputmode="numeric" pattern="[0-9 ]{8,11}" maxlength="12" required aria-describedby="CvrHelp-{{ uid }}">
+            <small id="CvrHelp-{{ uid }}" class="costa-muted">8 cifre</small>
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="erhverv-form__group">
+        <legend class="costa-label">Kontaktperson</legend>
+        <div class="costa-form__field">
+          <label for="Kontakt-{{ uid }}">Navn</label>
+          <input id="Kontakt-{{ uid }}" name="kontaktperson" type="text" autocomplete="name" required maxlength="120">
+        </div>
+        <div class="erhverv-form__row">
+          <div class="costa-form__field">
+            <label for="Email-{{ uid }}">E-mail</label>
+            <input id="Email-{{ uid }}" name="email" type="email" autocomplete="email" required maxlength="200" {% if customer %}value="{{ customer.email | escape }}"{% endif %}>
+          </div>
+          <div class="costa-form__field">
+            <label for="Tlf-{{ uid }}">Telefon</label>
+            <input id="Tlf-{{ uid }}" name="telefon" type="tel" autocomplete="tel" required maxlength="30">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="erhverv-form__group">
+        <legend class="costa-label">Levering</legend>
+        <div class="costa-form__field">
+          <label for="Adr-{{ uid }}">Leveringsadresse</label>
+          <input id="Adr-{{ uid }}" name="leveringsadresse" type="text" autocomplete="street-address" required maxlength="200">
+        </div>
+        <div class="erhverv-form__row erhverv-form__row--zip">
+          <div class="costa-form__field">
+            <label for="Zip-{{ uid }}">Postnr.</label>
+            <input id="Zip-{{ uid }}" name="postnr" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="postal-code" required>
+          </div>
+          <div class="costa-form__field">
+            <label for="By-{{ uid }}">By</label>
+            <input id="By-{{ uid }}" name="by" type="text" autocomplete="address-level2" required maxlength="80">
+          </div>
+        </div>
+      </fieldset>
+
+      <fieldset class="erhverv-form__group">
+        <legend class="costa-label">Kaffen hos jer</legend>
+        <div class="erhverv-form__row">
+          <div class="costa-form__field">
+            <label for="Kopper-{{ uid }}">Kopper pr. dag</label>
+            <select id="Kopper-{{ uid }}" name="kopper_pr_dag" class="costa-select" required>
+              <option value="" selected disabled>Vælg</option>
+              <option value="under-50">Under 50</option>
+              <option value="50-150">50–150</option>
+              <option value="150-300">150–300</option>
+              <option value="over-300">Over 300</option>
+            </select>
+          </div>
+          <div class="costa-form__field">
+            <label for="Maskine-{{ uid }}">Maskine</label>
+            <input id="Maskine-{{ uid }}" name="maskine" type="text" maxlength="120" placeholder="F.eks. helautomat, espressomaskine eller ingen endnu">
+          </div>
+        </div>
+      </fieldset>
+
+      <label class="erhverv-check">
+        <input type="checkbox" name="nyhedsbrev" value="on">
+        <span>{{ block.settings.newsletter_text | escape }}</span>
+      </label>
+
+      <div class="costa-form__status costa-form__status--error" role="alert" data-erhverv-error hidden></div>
+      <button type="submit" class="costa-button costa-button--primary" data-label="{{ block.settings.button | escape }}" data-label-sending="Sender …">{{ block.settings.button | escape }}</button>
+      {%- if block.settings.privacy != blank -%}<div class="costa-muted erhverv__privacy">{{ block.settings.privacy }}</div>{%- endif -%}
+    </form>
+
+    <div class="costa-form__status erhverv-done" role="status" data-erhverv-done hidden tabindex="-1">
+      <p class="costa-label">Tak</p>
+      <h3 class="erhverv__subtitle">{{ block.settings.success_heading | escape }}</h3>
+      <div class="costa-richtext">{{ block.settings.success_text }}</div>
+    </div>
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Erhvervsansøgning",
+  "target": "section",
+  "stylesheet": "erhverv.css",
+  "javascript": "erhverv.js",
+  "settings": [
+    { "type": "text", "id": "label", "label": "Etiket", "default": "Bliv erhvervskunde" },
+    { "type": "text", "id": "heading", "label": "Overskrift", "default": "Ansøg om en erhvervsaftale" },
+    { "type": "richtext", "id": "intro", "label": "Tekst", "default": "<p>Udfyld formularen, så kontakter vi jer. Når aftalen er godkendt, kan I logge ind og bestille til erhvervspris.</p>" },
+    { "type": "text", "id": "newsletter_text", "label": "Tekst ved nyhedsbrev", "default": "Ja tak, send os nyhedsbrevet med nye kaffer og tilbud. Vi kan altid afmelde det igen." },
+    { "type": "text", "id": "button", "label": "Knap", "default": "Send ansøgning" },
+    { "type": "richtext", "id": "privacy", "label": "Note under knappen", "default": "<p>Vi bruger oplysningerne til at behandle ansøgningen og levere til jer.</p>" },
+    { "type": "text", "id": "success_heading", "label": "Overskrift efter afsendelse", "default": "Ansøgningen er modtaget" },
+    { "type": "richtext", "id": "success_text", "label": "Tekst efter afsendelse", "default": "<p>Vi ser på den hurtigst muligt og skriver til jer, når aftalen er godkendt.</p>" }
+  ]
+}
+{% endschema %}

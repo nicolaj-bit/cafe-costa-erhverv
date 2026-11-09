@@ -1,0 +1,20 @@
+# Rabatfunktionen bag erhvervspriserne. Den kører hos Shopify ved hver kurv
+# og checkout og giver procentrabat ud fra kundens tag erhverv-niveau-1, -2
+# eller -3. Satserne ligger i rabattens metafelt, som appens side
+# «Prisniveauer» skriver. Virker uden Shopify Plus og uden native B2B.
+api_version = "2025-04"
+
+[[extensions]]
+name = "t:name"
+handle = "erhverv-rabat"
+type = "function"
+description = "t:description"
+
+  [[extensions.targeting]]
+  target = "cart.lines.discounts.generate.run"
+  input_query = "src/cart_lines_discounts_generate_run.graphql"
+  export = "cart-lines-discounts-generate-run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"

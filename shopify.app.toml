@@ -1,0 +1,38 @@
+# Café Costa Erhverv — custom app til Café Costa Kalundborg.
+# Appen har ingen egen server her: serveren er Base44-appen «Café Costa Erhverv»
+# (cafe-costa-erhverv-cbbca2d0.base44.app). Koden til den ligger spejlet i base44-app/.
+# client_id skrives af `shopify app config link`.
+client_id = ""
+name = "Café Costa Erhverv"
+# Ejerens side i admin. Serveres af Base44 som ren HTML med App Bridge og Polaris.
+application_url = "https://cafe-costa-erhverv-cbbca2d0.base44.app/api/admin"
+embedded = true
+
+[access_scopes]
+# read_customers/write_customers: opret kunden og skift tags ved godkendelse.
+# read_orders: ordrer i portalen. read_products: erhvervskollektionen.
+# write_discounts: opret den automatiske rabat og gem satserne på den.
+# Ingen scopes til abonnementer eller betalingsmetoder — de kræver Shopifys
+# godkendelse, og uden den fejler oprettelsen af app-versionen.
+scopes = "read_customers,write_customers,read_orders,read_products,write_discounts"
+use_legacy_install_flow = false
+
+[auth]
+redirect_urls = [ "https://cafe-costa-erhverv-cbbca2d0.base44.app/api/admin" ]
+
+[app_proxy]
+# Butikkens formular sender til /apps/erhverv, som Shopify signerer og
+# sender videre til Base44.
+url = "https://cafe-costa-erhverv-cbbca2d0.base44.app/api/erhverv-proxy"
+subpath = "erhverv"
+prefix = "apps"
+
+[webhooks]
+api_version = "2026-04"
+
+[pos]
+embedded = false
+
+[build]
+include_config_on_deploy = true
+automatically_update_urls_on_dev = false
