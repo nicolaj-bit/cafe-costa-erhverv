@@ -270,6 +270,154 @@ export async function slet(base44, env, id) {
   return { slettet: id };
 }
 
+// ---------------------------------------------------------------- Risteplan
+
+const DAG = 24 * 60 * 60 * 1000;
+
+/** Mandag kl. 00 i dansk tid for ugen, der indeholder `dato`, plus `uger` uger. */
+function ugeStart(dato, uger = 0) {
+  const dk = new Date(dato.toLocaleString("en-US", { timeZone: "Europe/Copenhagen" }));
+  const forskel = dato.getTime() - dk.getTime();
+  const ugedag = (dk.getDay() + 6) % 7; // mandag = 0
+  const mandag = new Date(dk.getFullYear(), dk.getMonth(), dk.getDate() - ugedag + uger * 7);
+  return new Date(mandag.getTime() + forskel);
+}
+
+function plusInterval(dato, interval, antal) {
+  const d = new Date(dato);
+  if (interval === "DAY") d.setUTCDate(d.getUTCDate() + antal);
+  else if (interval === "WEEK") d.setUTCDate(d.getUTCDate() + 7 * antal);
+  else if (interval === "MONTH") d.setUTCMonth(d.getUTCMonth() + antal);
+  else if (interval === "YEAR") d.setUTCFullYear(d.getUTCFullYear() + antal);
+  else return null;
+  return d;
+}
+
+/** Kg i en variant ud fra navnet: «1 kg» = 1, «Kasse 6 × 1 kg» = 6, «250 g» = 0,25. */
+export function kgIVariant(navn) {
+  const t = String(navn ?? "").toLowerCase().replace(",", ".");
+  const vaegt = /(\d+(?:\.\d+)?)\s*(kg|g)\b/.exec(t);
+  if (!vaegt) return null;
+  const kg = vaegt[2] === "g" ? Number(vaegt[1]) / 1000 : Number(vaegt[1]);
+  const antal = /(\d+)\s*[×x]\s*\d/.exec(t);
+  return kg * (antal ? Number(antal[1]) : 1);
+}
+
+const ORDRER = `query($q: String!, $after: String) {
+  orders(first: 100, after: $after, query: $q, sortKey: CREATED_AT) {
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      id name createdAt cancelledAt displayFulfillmentStatus tags
+      customer { id displayName firma: metafield(namespace: "erhverv", key: "firmanavn") { value } }
+      lineItems(first: 50) { nodes { title variantTitle quantity unfulfilledQuantity sellingPlan { name sellingPlanId } variant { id } product { id } } }
+    }
+  }
+}`;
+
+async function hentOrdrer(env, q) {
+  const alle = [];
+  let after = null;
+  for (let side = 0; side < 10; side++) {
+    const data = await adminGraphql(env, ORDRER, { q, after });
+    alle.push(...data.orders.nodes);
+    if (!data.orders.pageInfo.hasNextPage) break;
+    after = data.orders.pageInfo.endCursor;
+  }
+  return alle;
+}
+
+/**
+ * Risteplan for én uge (mandag–søndag, dansk tid).
+ * - Ventende: ordrer, der er kommet ind og ikke er sendt endnu.
+ * - Forventede: faste leveringer, der falder i ugen, regnet ud fra den seneste
+ *   ordre pr. kunde og kaffe plus abonnementets rytme. Shopify lader ikke appen
+ *   læse abonnementerne direkte, så et opsagt eller sat-på-pause abonnement kan
+ *   stå her, indtil det mangler en ordre.
+ */
+export async function risteplan(env, uger = 0) {
+  const fra = ugeStart(new Date(), uger);
+  const til = new Date(fra.getTime() + 7 * DAG);
+  const historik = new Date(Date.now() - 400 * DAG).toISOString().slice(0, 10);
+
+  const [ventendeOrdrer, abonnementsOrdrer] = await Promise.all([
+    hentOrdrer(env, "fulfillment_status:unshipped OR fulfillment_status:partial"),
+    hentOrdrer(env, `tag:Subscription created_at:>=${historik}`),
+  ]);
+
+  const firma = (o) => o.customer?.firma?.value || o.customer?.displayName || "Ukendt kunde";
+  const linje = (o, l, antal, dato, type) => ({
+    ordre: o.name,
+    kunde: firma(o),
+    dato,
+    type,
+    kaffe: l.title,
+    variant: l.variantTitle,
+    antal,
+    kg: (kgIVariant(l.variantTitle) ?? 0) * antal,
+    rytme: l.sellingPlan?.name ?? null,
+  });
+
+  // 1. Ordrer, der venter på at blive sendt (også dem fra tidligere uger).
+  const ventende = [];
+  for (const o of ventendeOrdrer) {
+    if (o.cancelledAt) continue;
+    for (const l of o.lineItems.nodes) {
+      if (!l.unfulfilledQuantity) continue;
+      ventende.push(linje(o, l, l.unfulfilledQuantity, o.createdAt, l.sellingPlan ? "fast" : "enkelt"));
+    }
+  }
+
+  // 2. Seneste ordre pr. kunde, variant og rytme → næste leveringer.
+  const seneste = new Map();
+  for (const o of abonnementsOrdrer) {
+    if (o.cancelledAt) continue;
+    for (const l of o.lineItems.nodes) {
+      if (!l.sellingPlan || !l.variant) continue;
+      const noegle = `${o.customer?.id}|${l.variant.id}|${l.sellingPlan.sellingPlanId}`;
+      const før = seneste.get(noegle);
+      if (!før || new Date(o.createdAt) > new Date(før.o.createdAt)) seneste.set(noegle, { o, l });
+    }
+  }
+
+  const planIds = [...new Set([...seneste.values()].map((x) => x.l.sellingPlan.sellingPlanId))];
+  const rytmer = new Map();
+  if (planIds.length) {
+    const data = await adminGraphql(
+      env,
+      `query($ids: [ID!]!) { nodes(ids: $ids) { ... on SellingPlan { id deliveryPolicy { ... on SellingPlanRecurringDeliveryPolicy { interval intervalCount } } } } }`,
+      { ids: planIds },
+    );
+    for (const n of data.nodes) if (n?.deliveryPolicy?.interval) rytmer.set(n.id, n.deliveryPolicy);
+  }
+
+  const forventede = [];
+  for (const { o, l } of seneste.values()) {
+    const rytme = rytmer.get(l.sellingPlan.sellingPlanId);
+    if (!rytme) continue;
+    let naeste = plusInterval(o.createdAt, rytme.interval, rytme.intervalCount);
+    for (let i = 0; naeste && naeste < fra && i < 400; i++) naeste = plusInterval(naeste, rytme.interval, rytme.intervalCount);
+    while (naeste && naeste < til) {
+      forventede.push(linje(o, l, l.quantity, naeste.toISOString(), "forventet"));
+      naeste = plusInterval(naeste, rytme.interval, rytme.intervalCount);
+    }
+  }
+  forventede.sort((a, b) => a.dato.localeCompare(b.dato));
+
+  // 3. Samlet pr. kaffe.
+  const pr = new Map();
+  for (const x of [...ventende, ...forventede]) {
+    const r = pr.get(x.kaffe) ?? { kaffe: x.kaffe, kg: 0, ventendeKg: 0, forventetKg: 0, ukendt: 0 };
+    if (!x.kg) r.ukendt += x.antal;
+    r.kg += x.kg;
+    if (x.type === "forventet") r.forventetKg += x.kg;
+    else r.ventendeKg += x.kg;
+    pr.set(x.kaffe, r);
+  }
+  const ialt = [...pr.values()].sort((a, b) => b.kg - a.kg);
+
+  return { fra: fra.toISOString(), til: til.toISOString(), ventende, forventede, ialt };
+}
+
 // ---------------------------------------------------------------- Rabatsatser
 
 /**
