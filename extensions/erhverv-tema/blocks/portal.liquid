@@ -50,6 +50,10 @@
   assign em = customer.metafields.erhverv
   assign firmanavn = em.firmanavn.value | default: customer.default_address.company | default: customer.name
   assign ansoeg_url = block.settings.apply_url | default: '/pages/kaffe-til-erhverv'
+  # Hop direkte ned til formularen på siden.
+  unless ansoeg_url contains '#'
+    assign ansoeg_url = ansoeg_url | append: '#ansoeg'
+  endunless
 -%}
 <div class="costa erhverv erhverv-portal" data-skaerm="{{ skaerm }}" {{ block.shopify_attributes }}>
   <div class="costa__inner">
