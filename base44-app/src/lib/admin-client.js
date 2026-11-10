@@ -19,6 +19,11 @@ function h(tag, attrs = {}, ...children) {
   return el;
 }
 
+/** replaceChildren skriver null som teksten «null», så tomme dele sorteres fra. */
+function vis(el, ...boern) {
+  el.replaceChildren(...boern.flat().filter((b) => b != null && b !== false));
+}
+
 async function api(action, extra = {}) {
   const token = await window.shopify.idToken();
   const res = await fetch("/api/admin-data", {
@@ -220,7 +225,7 @@ function visAnsoegning(id) {
   knapper.push(h("button", { class: "btn btn--link", onclick: (e) => slet(v, e.currentTarget) }, "Slet ansøgningen"));
 
   const kunde = adminLink("customers", v.shopify_customer_id);
-  $("ans-detalje").replaceChildren(
+  vis($("ans-detalje"), 
     h("div", {}, h("button", { class: "btn tilbage", onclick: () => lukDetalje("ans-liste-visning", "ans-detalje") }, "← Alle ansøgninger")),
     h("div", { class: "stack stack--s" },
       h("div", { class: "row" }, maerke(v.status), v.nyhedsbrev ? h("span", { class: "maerke maerke--afvist" }, "Vil have nyhedsbrev") : null),
@@ -345,7 +350,7 @@ async function hentAftaler() {
 function visAftale(id) {
   const a = aftaleListe.find((x) => x.id === id);
   if (!a) return;
-  $("aft-detalje").replaceChildren(
+  vis($("aft-detalje"), 
     h("div", {}, h("button", { class: "btn tilbage", onclick: () => lukDetalje("aft-liste-visning", "aft-detalje") }, "← Alle aftaler")),
     h("div", { class: "stack stack--s" },
       h("div", { class: "row" }, maerke(a.status)),
@@ -532,7 +537,7 @@ function visDag(dato) {
   const st = dagStatus(dato);
   const alle = kvData.bookinger.filter((x) => x.dato === dato);
   const fortid = dato < kvData.idag;
-  $("kv-dag").replaceChildren(
+  vis($("kv-dag"), 
     h("div", { class: "row row--between" },
       h("h2", {}, dagNavn(dato)),
       fortid ? null : h("button", { class: "btn" + (st.lukket ? " btn--primary" : ""), onclick: (e) => lukKv(dato, !st.lukket, e.currentTarget) }, st.lukket ? "Åbn dagen igen" : "Luk dagen")),
