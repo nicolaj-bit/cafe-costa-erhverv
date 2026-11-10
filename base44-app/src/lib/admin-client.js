@@ -517,6 +517,8 @@ function bookingKort(b) {
       felt("Start", b.start),
       felt("Gæster", b.gaester),
       felt("Adresse", [b.adresse, [b.postnr, b.by].filter(Boolean).join(" ")].filter(Boolean).join(", ")),
+      felt("Hvor skal vognen stå", b.placering),
+      felt("Kort", b.kort_url ? h("a", { href: b.kort_url, target: "_blank", rel: "noopener" }, "Se kortet") : null),
       felt("Kontakt", b.kontakt),
       felt("Telefon", b.telefon ? h("a", { href: "tel:" + b.telefon }, b.telefon) : null),
       felt("E-mail", b.email ? h("a", { href: "mailto:" + b.email }, b.email) : null),

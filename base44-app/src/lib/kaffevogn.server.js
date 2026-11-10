@@ -153,6 +153,7 @@ export const reservationSchema = z.object({
   by: tekst(80).min(2, "Skriv byen"),
   kontakt: tekst(120).min(2, "Skriv en kontaktperson"),
   telefon: tekst(30).min(8, "Skriv et telefonnummer"),
+  placering: tekst(500).optional().default(""),
   // En tidligere reservation fra samme kunde, der skal erstattes (f.eks. ny dag).
   erstat: z.string().max(64).optional(),
 });
@@ -210,6 +211,7 @@ export async function reserver(base44, env, input) {
     by: r.by,
     kontakt: r.kontakt,
     telefon: r.telefon,
+    placering: r.placering || null,
     status: "reserveret",
     reserveret_til: reserveretTil,
   });
@@ -259,6 +261,8 @@ export async function ordreOprettet(base44, env, ordre) {
       email: ordre.email ?? ordre.contact_email ?? null,
       reserveret_til: null,
       note: noter.join(" ") || null,
+      // Kortet med en prik er en fil, kunden har lagt ved i kurven. Shopify gemmer den.
+      ...(e.Kort ? { kort_url: String(e.Kort) } : {}),
     };
     if (booking) await db(base44).update(booking.id, felter);
     else {
@@ -272,6 +276,7 @@ export async function ordreOprettet(base44, env, ordre) {
         adresse: e.Adresse ?? null,
         kontakt: e.Kontakt ?? null,
         telefon: e.Telefon ?? null,
+        placering: e.Placering ?? null,
       });
     }
   }
