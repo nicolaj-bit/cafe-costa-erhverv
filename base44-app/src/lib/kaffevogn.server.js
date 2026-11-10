@@ -21,8 +21,10 @@ export const UDEN_FOR_OMRAADE = `Ring på ${TELEFON}, så finder vi en løsning`
 
 // Foreløbige værdier. Ejeren retter dem under fanen Kaffevogn.
 export const STANDARD_INDSTILLINGER = {
-  // Kalundborg Kommune. Udfyldes af ejeren.
-  postnumre: ["4400", "4450", "4460", "4470", "4480", "4490", "4591", "4592", "4593"],
+  // Kalundborg Kommune: Høng, Gørlev, Ruds Vedby, Kalundborg, Snertinge,
+  // Svebølle, Store Fuglede, Jerslev, Føllenslev, Sejerø og Eskebjerg.
+  // Ejeren retter listen under fanen Kaffevogn.
+  postnumre: ["4270", "4281", "4291", "4400", "4460", "4470", "4480", "4490", "4591", "4592", "4593"],
   varsel_dage: 7,
   lukket: [],
 };
