@@ -15,7 +15,9 @@ embedded = true
 # write_app_proxy: kræves af Shopify, fordi formularen går gennem app proxy.
 # Ingen scopes til abonnementer eller betalingsmetoder — de kræver Shopifys
 # godkendelse, og uden den fejler oprettelsen af app-versionen.
-scopes = "read_customers,write_customers,read_orders,read_products,write_discounts,write_app_proxy"
+# read_validations og write_validations: appen slår selv reglen «Erhvervsadgang»
+# til, fordi Shopify ikke viser custom apps under Betalingsregler.
+scopes = "read_customers,write_customers,read_orders,read_products,write_discounts,write_app_proxy,read_validations,write_validations"
 use_legacy_install_flow = false
 
 [auth]

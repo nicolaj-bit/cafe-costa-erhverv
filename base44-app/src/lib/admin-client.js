@@ -420,6 +420,14 @@ async function hentPlan() {
 // ------------------------------------------------------------------ Indstillinger
 
 function visRabatStatus(res) {
+  const a = res.adgang;
+  if (a) {
+    $("adgang-status").textContent = a.slaaetTil
+      ? "✓ Erhvervskaffen kan kun købes af godkendte erhvervskunder."
+      : a.fejl
+        ? "Spærringen af erhvervskaffe kunne ikke slås til: " + a.fejl
+        : "Tryk Gem rabatter for også at spærre erhvervskaffen for andre end erhvervskunder.";
+  }
   const r = res.rabat;
   $("rabat-status").textContent = r
     ? r.status === "ACTIVE" ? "✓ Rabatten er slået til i Shopify." : "Rabatten findes i Shopify, men er ikke slået til."
