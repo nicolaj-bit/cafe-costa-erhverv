@@ -265,7 +265,10 @@
               {%- for order in customer.orders limit: 25 -%}
                 <div class="erhverv-table__row" role="row">
                   <span role="cell"><strong>{{ order.name }}</strong></span>
-                  <span role="cell">{{ order.created_at | date: '%-d. %b %Y' }}</span>
+                  {%- comment -%} Dansk månedsnavn: date-filteret giver engelsk. {%- endcomment -%}
+                  {%- assign md = order.created_at | date: '%m' | plus: 0 | minus: 1 -%}
+                  {%- assign maaneder = 'jan.,feb.,mar.,apr.,maj,jun.,jul.,aug.,sep.,okt.,nov.,dec.' | split: ',' -%}
+                  <span role="cell">{{ order.created_at | date: '%-d.' }} {{ maaneder[md] }} {{ order.created_at | date: '%Y' }}</span>
                   <span role="cell"><span class="erhverv-pill">{{ order.financial_status_label }}</span></span>
                   <span role="cell"><span class="erhverv-pill">{{ order.fulfillment_status_label }}</span></span>
                   <span role="cell">{{ order.total_price | money }}</span>
