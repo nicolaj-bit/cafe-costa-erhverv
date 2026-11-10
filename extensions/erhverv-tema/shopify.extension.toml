@@ -1,0 +1,7 @@
+# Temablokke til butikken. Blokkene bruger temaets egne costa-klasser og
+# variabler fra costa-tokens.css, så de ligner resten af butikken.
+#   «Erhvervsansøgning» — formularen på siden Kaffe til erhverv
+#   «Erhvervsportal»    — siden /pages/erhverv for erhvervskunder
+name = "Erhvervsportal"
+type = "theme"
+uid = "45f8fbec-72b3-0000-06b1-82ca55e2bffb5c0a81e4"

@@ -1,0 +1,10 @@
+node_modules
+.DS_Store
+.env
+.env.*
+.shopify/*
+.shopify.lock
+/extensions/*/dist
+/extensions/*/generated
+extensions/*/shopify.d.ts
+extensions/*/manifest.json

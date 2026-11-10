@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="da">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Erhvervskunder</title>
+    <!-- Client ID er ikke en hemmelighed; serveren sætter den ind fra Base44's secrets. -->
+    <meta name="shopify-api-key" content="__API_KEY__" />
+    <!-- App Bridge skal være det første script. Polaris giver Shopifys eget design. -->
+    <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
+    <script src="https://cdn.shopify.com/shopifycloud/polaris-1.js"></script>
+  </head>
+  <body data-side="__SIDE__">
+    <ui-nav-menu>
+      <a href="/api/admin" rel="home">Ansøgninger</a>
+      <a href="/api/admin-indstillinger">Prisniveauer</a>
+    </ui-nav-menu>
+
+    <!-- Serveren sender kun én af de to sider: Shopifys titellinje læser den
+         første s-page i dokumentet, også en skjult. -->
+    <!--SIDE:ansoegninger-->
+    <div id="side-ansoegninger" hidden>
+      <s-page heading="Erhvervskunder" inlineSize="large">
+        <s-button slot="primary-action" id="refresh">Opdatér</s-button>
+        <s-button slot="secondary-actions" href="/api/admin-indstillinger">Prisniveauer</s-button>
+
+        <div id="error" hidden>
+          <s-banner tone="critical" heading="Kunne ikke hente ansøgninger">
+            <s-paragraph id="error-text"></s-paragraph>
+          </s-banner>
+        </div>
+
+        <s-section>
+          <s-grid gridTemplateColumns="repeat(auto-fit, minmax(160px, 1fr))" gap="base" id="stats"></s-grid>
+        </s-section>
+
+        <s-section padding="none">
+          <s-table id="table" loading>
+            <s-grid slot="filters" gridTemplateColumns="1fr auto" gap="small-200">
+              <s-search-field label="Søg" labelAccessibilityVisibility="exclusive" placeholder="Søg på firma, CVR, kontaktperson eller by" id="search"></s-search-field>
+              <s-select label="Status" labelAccessibilityVisibility="exclusive" id="status">
+                <s-option value="alle">Alle</s-option>
+                <s-option value="afventer" selected>Afventer</s-option>
+                <s-option value="godkendt">Godkendt</s-option>
+                <s-option value="afvist">Afvist</s-option>
+              </s-select>
+            </s-grid>
+            <s-table-header-row>
+              <s-table-header listSlot="primary">Virksomhed</s-table-header>
+              <s-table-header listSlot="secondary">Kontakt</s-table-header>
+              <s-table-header>Kopper pr. dag</s-table-header>
+              <s-table-header>Ansøgt</s-table-header>
+              <s-table-header listSlot="inline">Status</s-table-header>
+              <s-table-header></s-table-header>
+            </s-table-header-row>
+            <s-table-body id="rows"></s-table-body>
+          </s-table>
+        </s-section>
+      </s-page>
+
+      <s-modal id="detail" heading="Ansøgning" size="large">
+        <s-stack gap="base" id="detail-body"></s-stack>
+        <s-button slot="primary-action" variant="primary" id="approve">Godkend</s-button>
+        <s-button slot="secondary-actions" tone="critical" id="reject">Afvis</s-button>
+        <!-- Shopify viser højst to sekundære knapper. Krydset lukker vinduet. -->
+        <s-button slot="secondary-actions" id="delete">Slet</s-button>
+      </s-modal>
+    </div>
+    <!--/SIDE:ansoegninger-->
+
+    <!--SIDE:indstillinger-->
+    <div id="side-indstillinger" hidden>
+      <s-page heading="Prisniveauer" inlineSize="base">
+        <s-button slot="primary-action" variant="primary" id="save">Gem</s-button>
+        <s-button slot="secondary-actions" href="/api/admin">Tilbage til ansøgninger</s-button>
+        <div id="settings-error" hidden>
+          <s-banner tone="critical" heading="Kunne ikke gemme">
+            <s-paragraph id="settings-error-text"></s-paragraph>
+          </s-banner>
+        </div>
+        <s-section heading="Rabat pr. niveau">
+          <s-paragraph color="subdued">
+            Erhvervskunder får rabatten på alle varer i kurven, når de er logget
+            ind. Hvilket niveau en kunde har, vælger du, når du godkender. Rabatten
+            gives af appens rabatfunktion ud fra kundens tag erhverv-niveau-1, -2
+            eller -3 — det kræver hverken Shopify Plus eller B2B.
+          </s-paragraph>
+          <s-stack gap="base" id="levels">
+            <s-number-field label="Niveau 1" suffix="%" min="0" max="60" step="1" id="niveau-1"></s-number-field>
+            <s-number-field label="Niveau 2" suffix="%" min="0" max="60" step="1" id="niveau-2"></s-number-field>
+            <s-number-field label="Niveau 3" suffix="%" min="0" max="60" step="1" id="niveau-3"></s-number-field>
+          </s-stack>
+        </s-section>
+        <s-section heading="Rabatten i Shopify">
+          <s-paragraph id="discount-status">Henter …</s-paragraph>
+        </s-section>
+      </s-page>
+    </div>
+    <!--/SIDE:indstillinger-->
+
+    <script type="module">__CLIENT_JS__</script>
+  </body>
+</html>

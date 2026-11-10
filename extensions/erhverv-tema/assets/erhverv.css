@@ -1,0 +1,88 @@
+/* Erhvervsportal. Bygger kun videre på temaets costa-klasser; alle farver,
+   skrifter og afstande kommer fra variablerne i costa-tokens.css. */
+.erhverv { padding-block: var(--costa-space-section); }
+.erhverv__title { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); text-transform: var(--costa-heading-case); font-size: var(--costa-text-h1); line-height: 1.02; margin: var(--costa-space-xs) 0 var(--costa-space-m); }
+.erhverv__subtitle { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); text-transform: var(--costa-heading-case); font-size: var(--costa-text-h3); margin: var(--costa-space-xs) 0 var(--costa-space-s); }
+.erhverv__intro { max-width: 60ch; margin-bottom: var(--costa-space-l); }
+
+/* Formular */
+.erhverv-form__group { border: 0; padding: 0; margin: 0; display: grid; gap: var(--costa-space-s); }
+.erhverv-form__group + .erhverv-form__group { padding-top: var(--costa-space-m); border-top: var(--costa-line); }
+.erhverv-form__group legend { margin-bottom: var(--costa-space-s); }
+.erhverv-form__row { display: grid; gap: var(--costa-space-s); grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 750px) {
+  .erhverv-form__row { grid-template-columns: 1fr 1fr; }
+  .erhverv-form__row--zip { grid-template-columns: 9rem 1fr; }
+}
+.erhverv-form select.costa-select { min-height: 46px; }
+.erhverv-form [aria-invalid="true"] { border-color: var(--costa-color-accent); }
+.erhverv-check { display: flex; gap: var(--costa-space-s); align-items: flex-start; font-family: var(--costa-font-body) !important; font-size: var(--costa-text-base) !important; text-transform: none !important; letter-spacing: 0 !important; cursor: pointer; }
+.erhverv-check input { width: 20px; height: 20px; min-height: 0; margin-top: 0.15em; accent-color: var(--costa-color-accent); flex: none; }
+.erhverv-form .costa-button { justify-self: start; }
+.erhverv__privacy p { margin: 0; }
+.erhverv-done { margin-top: var(--costa-space-l); }
+
+/* Portal: valg og status */
+.erhverv-portal__intro { max-width: 60ch; }
+.erhverv-portal__choices, .erhverv-grid { display: grid; gap: var(--costa-space-m); grid-template-columns: 1fr; margin-top: var(--costa-space-l); }
+@media (min-width: 750px) { .erhverv-portal__choices, .erhverv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.erhverv-card { padding: var(--costa-space-l); gap: var(--costa-space-xs); }
+.erhverv-card p { margin: 0 0 var(--costa-space-s); }
+.erhverv-card .costa-button { align-self: flex-start; margin-top: auto; }
+.erhverv-card--kraft { background: var(--costa-kraft, #d8c6a8); }
+.erhverv-card--soon { border-style: dashed; background: transparent; }
+.erhverv-soon { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); font-size: var(--costa-text-h2); line-height: 1; color: var(--costa-color-muted); }
+.erhverv-big { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); font-size: var(--costa-text-display); line-height: 0.9; color: var(--costa-color-accent); }
+.erhverv-contact-name { font-weight: 600; }
+.erhverv-dl { display: grid; grid-template-columns: max-content 1fr; gap: var(--costa-space-xs) var(--costa-space-m); margin: 0; }
+.erhverv-dl dt { font-family: var(--costa-font-mono); font-size: var(--costa-text-label); text-transform: uppercase; letter-spacing: 0.06em; color: var(--costa-color-muted); padding-top: 0.2em; }
+.erhverv-dl dd { margin: 0; }
+
+.erhverv-portal__status { max-width: 60ch; }
+.erhverv-steps { list-style: none; padding: 0 !important; margin: var(--costa-space-l) 0 !important; display: grid; gap: var(--costa-space-s); }
+.erhverv-steps li { display: flex; align-items: center; gap: var(--costa-space-s); color: var(--costa-color-muted); }
+.erhverv-steps span { display: inline-grid; place-items: center; width: 2.4rem; height: 2.4rem; border-radius: 50%; border: var(--costa-line); font-family: var(--costa-font-mono); font-size: var(--costa-text-label); }
+.erhverv-steps .is-done { color: var(--costa-color-text); }
+.erhverv-steps .is-done span { background: var(--costa-color-text); color: var(--costa-color-bg); border-color: var(--costa-color-text); }
+.erhverv-steps .is-current { color: var(--costa-color-text); font-weight: 600; }
+.erhverv-steps .is-current span { border-color: var(--costa-color-accent); color: var(--costa-color-accent); }
+
+/* Portal: godkendt */
+.erhverv-portal__head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: var(--costa-space-m); }
+.erhverv-portal__head .erhverv__title { margin-bottom: 0; }
+.erhverv-level { display: grid; justify-items: end; margin: 0; text-align: right; }
+.erhverv-level strong { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); font-size: var(--costa-text-h1); line-height: 1; color: var(--costa-color-accent); }
+
+.erhverv-tabs { display: flex; gap: var(--costa-space-xs); margin: var(--costa-space-l) 0 var(--costa-space-m); border-bottom: var(--costa-line); overflow-x: auto; scrollbar-width: none; }
+.erhverv-tabs button { flex: none; background: none; border: 0; border-bottom: 3px solid transparent; margin-bottom: calc(var(--costa-line-width) * -1); padding: var(--costa-space-s) var(--costa-space-m); font: 500 var(--costa-text-label)/1 var(--costa-font-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--costa-color-muted); cursor: pointer; }
+.erhverv-tabs button[aria-selected="true"] { color: var(--costa-color-text); border-bottom-color: var(--costa-color-accent); }
+.erhverv-tabs button:focus-visible { outline: 2px solid var(--costa-color-accent); outline-offset: -2px; }
+.erhverv-panel[hidden] { display: none; }
+.erhverv-note { margin: 0 0 var(--costa-space-m); }
+
+.erhverv-products { list-style: none; padding: 0 !important; margin: 0 0 var(--costa-space-l) !important; display: grid; gap: var(--costa-space-s); }
+.erhverv-product { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: var(--costa-space-s) var(--costa-space-m); align-items: center; padding: var(--costa-space-m); background: var(--costa-color-surface); border: var(--costa-line); border-radius: var(--costa-radius); }
+.erhverv-product__media { width: 64px; aspect-ratio: 1; border-radius: calc(var(--costa-radius) / 2); overflow: hidden; background: var(--costa-kraft, #d8c6a8); }
+.erhverv-product__media img { width: 100%; height: 100%; object-fit: cover; }
+.erhverv-product__title { font-size: var(--costa-text-h3); margin: 0 0 0.2em; }
+.erhverv-product__title a { text-decoration: none !important; }
+.erhverv-product__info p { margin: 0; }
+.erhverv-product__form { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: var(--costa-space-s); }
+.erhverv-price { margin: 0 auto 0 0; display: flex; gap: var(--costa-space-xs); align-items: baseline; }
+.erhverv-price strong { font-size: var(--costa-text-h3); }
+.erhverv-qty { width: 4.6rem; min-height: 36px; padding: 0 0.8rem; border: var(--costa-line); border-radius: 999px; background: var(--costa-color-bg); font: inherit; text-align: center; }
+@media (min-width: 990px) {
+  .erhverv-product { grid-template-columns: 64px minmax(0, 1fr) auto; }
+  .erhverv-product__form { grid-column: auto; flex-wrap: nowrap; }
+  .erhverv-price { margin: 0 var(--costa-space-s); min-width: 9rem; justify-content: flex-end; }
+}
+
+.erhverv-table { display: grid; border: var(--costa-line); border-radius: var(--costa-radius); overflow: hidden; background: var(--costa-color-surface); margin-bottom: var(--costa-space-m); }
+.erhverv-table__row { display: grid; grid-template-columns: 1fr auto; gap: var(--costa-space-xs) var(--costa-space-m); padding: var(--costa-space-m); align-items: center; }
+.erhverv-table__row + .erhverv-table__row { border-top: var(--costa-line); }
+.erhverv-table__head { display: none; }
+@media (min-width: 750px) {
+  .erhverv-table__row { grid-template-columns: 1fr 1.2fr 1.2fr 1.2fr 1fr auto; }
+  .erhverv-table__head { display: grid; font-family: var(--costa-font-mono); font-size: var(--costa-text-label); text-transform: uppercase; letter-spacing: 0.06em; color: var(--costa-color-muted); }
+}
+.erhverv-pill { display: inline-block; padding: 0.3em 0.8em; border: var(--costa-line); border-radius: 999px; font-size: var(--costa-text-small); }
