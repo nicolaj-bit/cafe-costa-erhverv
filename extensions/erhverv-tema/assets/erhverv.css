@@ -1,6 +1,6 @@
 /* Erhvervsportal. Bygger kun videre på temaets costa-klasser; alle farver,
    skrifter og afstande kommer fra variablerne i costa-tokens.css. */
-.erhverv { padding-block: var(--costa-space-section); }
+.erhverv { padding-block: var(--costa-space-section); scroll-margin-top: 80px; }
 .erhverv__title { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); text-transform: var(--costa-heading-case); font-size: var(--costa-text-h1); line-height: 1.02; margin: var(--costa-space-xs) 0 var(--costa-space-m); }
 .erhverv__subtitle { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); text-transform: var(--costa-heading-case); font-size: var(--costa-text-h3); margin: var(--costa-space-xs) 0 var(--costa-space-s); }
 .erhverv__intro { max-width: 60ch; margin-bottom: var(--costa-space-l); }
