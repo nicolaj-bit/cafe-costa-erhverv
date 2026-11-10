@@ -156,15 +156,20 @@
               {%- if block.settings.contact_email != blank -%}<p><a href="mailto:{{ block.settings.contact_email }}">{{ block.settings.contact_email | escape }}</a></p>{%- endif -%}
             </div>
             {%- comment -%}
-              Fast levering styres af Shopify Subscriptions. Kunden vælger den under
-              «Vælg varer»; pause, spring over og opsig sker på kundens konto.
+              Fast levering styres af Shopify Subscriptions. Kortet henter kundens
+              egne aftaler gennem app proxy'en (/apps/erhverv), som regner dem ud
+              fra ordrerne. Ændr, spring over, pause og opsig sker på abonnements-
+              siden i kundekontoen, hvor Shopify Subscriptions håndterer dem.
             {%- endcomment -%}
-            <div class="costa-card erhverv-card">
+            {%- assign abonnement_url = block.settings.subscriptions_url | default: routes.account_url -%}
+            <div class="costa-card erhverv-card erhverv-aftale" data-erhverv-aftale data-url="{{ routes.root_url | append: '/apps/erhverv' | replace: '//', '/' }}" data-konto="{{ abonnement_url }}">
               <p class="costa-label">Fast levering</p>
-              <p>Få kaffen leveret fast hver uge, hver 2. uge eller hver måned. Vælg «Fast levering» ved kaffen. Første levering kommer inden for ca. 1 uge, og derefter kommer den automatisk efter rytmen. Kortet gemmes ved første køb.</p>
-              <div class="erhverv-card__actions">
-                <button type="button" class="costa-button costa-button--primary" data-erhverv-goto="varer">Vælg kaffe</button>
-                <a class="costa-button" href="{{ routes.account_url }}">Se og ændr faste leveringer</a>
+              <div data-erhverv-aftale-liste hidden></div>
+              <div data-erhverv-aftale-tom>
+                <p>Få kaffen leveret fast hver måned. Vælg «Fast levering» ved kaffen. Første levering kommer inden for ca. 1 uge, og derefter trækkes beløbet automatisk på kortet hver måned, indtil I opsiger. Ingen binding.</p>
+                <div class="erhverv-card__actions">
+                  <button type="button" class="costa-button costa-button--primary" data-erhverv-goto="varer">Vælg kaffe</button>
+                </div>
               </div>
             </div>
           </div>
@@ -266,8 +271,12 @@
                           <p class="costa-muted erhverv-plan__note" hidden data-erhverv-plan-note>Første levering inden for ca. 1 uge — derefter efter den valgte rytme.</p>
                         </fieldset>
                       {%- endif -%}
-                      <input type="hidden" name="quantity" value="1">
                       <div class="costa-bag__buy">
+                        <div class="costa-qty erhverv-antal" data-erhverv-antal>
+                          <button type="button" data-trin="-1" aria-label="Færre">−</button>
+                          <input type="number" name="quantity" value="1" min="1" max="99" inputmode="numeric" aria-label="Antal af {{ product.title | escape }}">
+                          <button type="button" data-trin="1" aria-label="Flere">+</button>
+                        </div>
                         <span class="costa-price">
                           {%- if sats > 0 -%}<s data-erhverv-liste>{{ v0.price | money }}</s> {% endif -%}
                           <span data-erhverv-pris>{{ pris0 | money }}</span>
@@ -324,6 +333,7 @@
   "settings": [
     { "type": "collection", "id": "collection", "label": "Erhvervskollektion", "info": "Kaffen, der vises under «Vælg varer». Kassestørrelser er varianter på produktet." },
     { "type": "url", "id": "apply_url", "label": "Side med formularen" },
+    { "type": "url", "id": "subscriptions_url", "label": "Abonnementssiden i kundekontoen", "info": "Hvor kunden ændrer, springer over, sætter på pause og opsiger fast levering. Tom = kundekontoen." },
     { "type": "header", "content": "Ikke logget ind" },
     { "type": "text", "id": "guest_heading", "label": "Overskrift", "default": "Kaffe til erhverv" },
     { "type": "richtext", "id": "guest_text", "label": "Tekst", "default": "<p>Erhvervskunder bestiller her til egen pris og ser deres ordrer og fakturaer.</p>" },

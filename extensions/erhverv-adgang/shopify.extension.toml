@@ -1,0 +1,19 @@
+# Spærrer erhvervskaffen (produkter med tagget «erhverv») for alle andre end
+# godkendte erhvervskunder (tagget erhverv-godkendt). Kører i kurv og checkout.
+api_version = "2026-07"
+
+[[extensions]]
+name = "t:name"
+handle = "erhverv-adgang"
+type = "function"
+uid = "9bbf3158-9f67-d115-5ce2-f1a126e1dc2a270d0ab7"
+description = "t:description"
+
+  [[extensions.targeting]]
+  target = "cart.validations.generate.run"
+  input_query = "src/cart_validations_generate_run.graphql"
+  export = "cart-validations-generate-run"
+
+  [extensions.build]
+  command = ""
+  path = "dist/function.wasm"

@@ -18,6 +18,7 @@ Bygget som Lalatotos forudbestillings-app: **Base44 er serveren**, og appen
 | Ansøgningsformularen | Temablok «Erhvervsansøgning» → `/apps/erhverv` → Base44 `/api/erhverv-proxy` | App proxy. Shopify signerer kaldet; Base44 tjekker signaturen |
 | Portalen | Temablok «Erhvervsportal» på `/pages/erhverv` | Ren Liquid ud fra kundens tags |
 | Erhvervspriser | Rabatfunktionen `erhverv-rabat` | Procentrabat ud fra tagget `erhverv-niveau-1/2/3`. Kræver hverken Plus eller B2B |
+| Kun for erhvervskunder | Valideringsfunktionen `erhverv-adgang` | Stopper kurv og checkout, hvis der er en vare med produkt-tagget `erhverv`, og kunden ikke har `erhverv-godkendt`. Slås til under Indstillinger → Kasse → Kasseregler |
 | Virksomheder | Base44-entiteten `Virksomhed` | Kun serveren læser og skriver, efter kontrol af kalderen |
 
 Base44-appen hedder «Café Costa Erhverv» (id `6af2086e391faa45cbbca2d0`,
@@ -92,10 +93,19 @@ modtagere, der ikke er brugere af Base44-appen, kræver Base44 et betalt
 abonnement og eget domæne. Fejler mailen, bliver godkendelsen stående, og
 ejeren får besked i admin.
 
-## Ikke bygget endnu
+## Fast levering
 
-- **Fast levering** vises som «Kommer snart». Bygges, når betalingsformen er
-  besluttet og abonnementsmodulet valgt.
+Shopify Subscriptions står for abonnementerne, kortet og trækningerne. Appen
+har bevidst ingen scopes til abonnementer: «Aftaler» og «Min aftale» regnes ud
+fra ordrerne med tagget `Subscription`. Teksten til abonnementspolitikken står
+i `docs/abonnementsbetingelser.md`.
+
+## Shopify Plus på den rigtige butik
+
+Shopify tillader kun funktioner (rabatten `erhverv-rabat` og spærringen
+`erhverv-adgang`) i en **custom app** på Plus-butikker. Udviklingsbutikker er
+undtaget. På Café Costas rigtige butik uden Plus skal appen derfor enten
+distribueres som offentlig (unlisted) app, eller butikken skal på Plus.
 
 ## Test
 

@@ -98,3 +98,17 @@
   .erhverv-table__head { display: grid; font-family: var(--costa-font-mono); font-size: var(--costa-text-label); text-transform: uppercase; letter-spacing: 0.06em; color: var(--costa-color-muted); }
 }
 .erhverv-pill { display: inline-block; padding: 0.3em 0.8em; border: var(--costa-line); border-radius: 999px; font-size: var(--costa-text-small); }
+
+/* Antal: temaets costa-qty, lidt lavere i kortet. Prisen står på egen linje. */
+.erhverv .costa-bag__buy { flex-wrap: wrap; }
+.erhverv .costa-bag__buy .costa-price { flex: 1 1 100%; }
+.erhverv-antal button { height: 44px; }
+
+/* Min aftale: fast levering over hele bredden */
+.erhverv-aftale { grid-column: 1 / -1; }
+.erhverv-aftale__item + .erhverv-aftale__item { margin-top: var(--costa-space-m); padding-top: var(--costa-space-m); border-top: var(--costa-line); }
+.erhverv-aftale__fakta { display: grid; gap: var(--costa-space-s) var(--costa-space-l); grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); margin: 0 0 var(--costa-space-m); }
+.erhverv-aftale__fakta dt { font-family: var(--costa-font-mono); font-size: var(--costa-text-label); text-transform: uppercase; letter-spacing: 0.06em; color: var(--costa-color-muted); }
+.erhverv-aftale__fakta dd { margin: 0; font-weight: 600; }
+.erhverv-aftale__varer { margin: 0 0 var(--costa-space-m); padding-left: 1.2em; }
+.erhverv-aftale__fejl { border-left: 6px solid var(--costa-color-accent); padding-left: var(--costa-space-s); }

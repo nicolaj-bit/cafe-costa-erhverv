@@ -1,0 +1,21 @@
+# Det, funktionen får at vide om kurven. Kun tags — ingen persondata.
+query CartValidationsGenerateRunInput {
+  cart {
+    buyerIdentity {
+      customer {
+        hasAnyTag(tags: ["erhverv-godkendt"])
+      }
+    }
+    lines {
+      merchandise {
+        __typename
+        ... on ProductVariant {
+          product {
+            title
+            hasAnyTag(tags: ["erhverv"])
+          }
+        }
+      }
+    }
+  }
+}
