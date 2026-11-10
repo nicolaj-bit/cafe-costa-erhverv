@@ -11,13 +11,12 @@ embedded = true
 [access_scopes]
 # read_customers/write_customers: opret kunden og skift tags ved godkendelse.
 # read_orders: ordrer i portalen. read_products: erhvervskollektionen.
-# write_discounts: opret den automatiske rabat og gem satserne på den.
+# write_discounts: opret de tre automatiske erhvervsrabatter og ret satserne.
+# write_customers dækker også kundegrupperne, rabatterne gælder for.
 # write_app_proxy: kræves af Shopify, fordi formularen går gennem app proxy.
 # Ingen scopes til abonnementer eller betalingsmetoder — de kræver Shopifys
 # godkendelse, og uden den fejler oprettelsen af app-versionen.
-# read_validations og write_validations: appen slår selv reglen «Erhvervsadgang»
-# til, fordi Shopify ikke viser custom apps under Betalingsregler.
-scopes = "read_customers,write_customers,read_orders,read_products,write_discounts,write_app_proxy,read_validations,write_validations"
+scopes = "read_customers,write_customers,read_orders,read_products,write_discounts,write_app_proxy"
 use_legacy_install_flow = false
 
 [auth]

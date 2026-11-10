@@ -16,10 +16,6 @@ export const TAG = {
 const ALLE_STATUS_TAGS = [TAG.afventer, TAG.godkendt, TAG.afvist, TAG.niveau(1), TAG.niveau(2), TAG.niveau(3)];
 
 export const STANDARD_SATSER = { 1: 10, 2: 15, 3: 20 };
-const RABAT_TITEL = "Erhvervspriser";
-const FUNKTION = "erhverv-rabat";
-// App-ejet navnerum: kun denne app kan skrive det. Funktionen læser samme sted.
-const RABAT_NAVNERUM = "$app:erhverv";
 
 // ---------------------------------------------------------------- CVR
 
@@ -544,119 +540,118 @@ export async function aftaler(env, { kundeId = null } = {}) {
 
 const dkDato = (d) => new Date(d).toLocaleDateString("da-DK", { day: "numeric", month: "long", timeZone: "Europe/Copenhagen" });
 
-// ---------------------------------------------------------------- Erhvervsadgang
-
-// Valideringsfunktionen, der kun lader godkendte erhvervskunder købe
-// erhvervskaffe. Shopify viser ikke custom apps under Betalingsregler, så
-// appen slår selv reglen til, når ejeren gemmer sine rabatter.
-const ADGANG_FUNKTION = "erhverv-adgang";
-const ADGANG_TITEL = "Erhvervsadgang";
-
-async function findAdgang(env) {
-  const data = await adminGraphql(env, `{ validations(first: 25) { nodes { id title enabled shopifyFunction { title } } } }`);
-  return data.validations.nodes.find((v) => v.title === ADGANG_TITEL || v.shopifyFunction?.title === ADGANG_TITEL) ?? null;
-}
-
-/** Status til Indstillinger: slået til, slået fra eller ikke oprettet. Fejler aldrig. */
-export async function hentAdgang(env) {
-  try {
-    const v = await findAdgang(env);
-    return { findes: Boolean(v), slaaetTil: Boolean(v?.enabled) };
-  } catch (e) {
-    return { findes: false, slaaetTil: false, fejl: String(e?.message ?? e).slice(0, 200) };
-  }
-}
-
-export async function slaaAdgangTil(env) {
-  const v = await findAdgang(env);
-  if (!v) {
-    const data = await adminGraphql(
-      env,
-      `mutation($v: ValidationCreateInput!) { validationCreate(validation: $v) { validation { id enabled } userErrors { field message } } }`,
-      // blockOnFailure false: går funktionen selv i stykker, må kunderne stadig handle.
-      { v: { functionHandle: ADGANG_FUNKTION, title: ADGANG_TITEL, enable: true, blockOnFailure: false } },
-    );
-    assertNoUserErrors(data.validationCreate, "Kunne ikke slå erhvervsadgangen til");
-  } else if (!v.enabled) {
-    const data = await adminGraphql(
-      env,
-      `mutation($id: ID!, $v: ValidationUpdateInput!) { validationUpdate(id: $id, validation: $v) { validation { id enabled } userErrors { field message } } }`,
-      { id: v.id, v: { enable: true } },
-    );
-    assertNoUserErrors(data.validationUpdate, "Kunne ikke slå erhvervsadgangen til");
-  }
-  return { findes: true, slaaetTil: true };
-}
-
 // ---------------------------------------------------------------- Rabatsatser
 
 /**
- * Satserne gemmes to steder i Shopify: på rabatten, hvor discount-funktionen
- * læser dem, og på butikken, hvor portalen i temaet viser erhvervsprisen.
- * Rabattens id gemmes også på butikken, så vi kan finde den igen.
+ * Erhvervsrabatten er Shopifys almindelige automatiske rabatter — én pr.
+ * niveau, der kun gælder for kundegruppen med tagget erhverv-niveau-X. Det
+ * virker på alle Shopify-planer; appens egne funktioner kræver Shopify Plus.
+ *
+ * Satserne gemmes også på butikken (erhverv.niveauer), så portalen kan vise
+ * prisen, og rabatternes og kundegruppernes id'er gemmes i erhverv.rabatter.
  */
+const NIVEAUER = [1, 2, 3];
+const rabatTitel = (n) => `Erhvervsrabat ${n}`;
+const gruppeNavn = (n) => `Erhvervskunder rabat ${n}`;
+
+// Fast levering: rabatten skal også gælde abonnementer og alle senere leveringer.
+// recurringCycleLimit 0 betyder «uden grænse». Uden dette får kun første
+// levering erhvervsprisen, og resten opkræves til listepris.
+const rabatIndhold = (sats) => ({
+  customerGets: {
+    value: { percentage: sats / 100 },
+    items: { all: true },
+    appliesOnOneTimePurchase: true,
+    appliesOnSubscription: true,
+  },
+  recurringCycleLimit: 0,
+});
+
+async function hentGemteRabatter(env) {
+  const data = await adminGraphql(env, `{ shop { id satser: metafield(namespace: "erhverv", key: "niveauer") { jsonValue } rabatter: metafield(namespace: "erhverv", key: "rabatter") { jsonValue } } }`);
+  return { shopId: data.shop.id, satser: data.shop.satser?.jsonValue ?? null, rabatter: data.shop.rabatter?.jsonValue ?? {} };
+}
+
 export async function hentSatser(env) {
-  const data = await adminGraphql(env, `{ shop { satser: metafield(namespace: "erhverv", key: "niveauer") { jsonValue } rabat: metafield(namespace: "erhverv", key: "rabat_id") { value } } }`);
-  const gemt = data.shop.satser?.jsonValue ?? {};
-  const satser = { 1: Number(gemt[1] ?? STANDARD_SATSER[1]), 2: Number(gemt[2] ?? STANDARD_SATSER[2]), 3: Number(gemt[3] ?? STANDARD_SATSER[3]) };
+  const { satser: gemt, rabatter } = await hentGemteRabatter(env);
+  const satser = {};
+  for (const n of NIVEAUER) satser[n] = Number(gemt?.[n] ?? STANDARD_SATSER[n]);
+
+  const ids = NIVEAUER.map((n) => rabatter[n]?.rabat).filter(Boolean);
   let rabat = null;
-  const rabatId = data.shop.rabat?.value;
-  if (rabatId) {
-    const r = await adminGraphql(env, `query($id: ID!) { node(id: $id) { ... on DiscountAutomaticNode { id automaticDiscount { ... on DiscountAutomaticApp { title status } } } } }`, { id: rabatId });
-    if (r.node?.id) rabat = { id: r.node.id, titel: r.node.automaticDiscount?.title, status: r.node.automaticDiscount?.status };
+  if (ids.length) {
+    const r = await adminGraphql(env, `query($ids: [ID!]!) { nodes(ids: $ids) { ... on DiscountAutomaticNode { id automaticDiscount { ... on DiscountAutomaticBasic { status } } } } }`, { ids });
+    const fundne = r.nodes.filter((x) => x?.id);
+    const aktive = fundne.filter((x) => x.automaticDiscount?.status === "ACTIVE").length;
+    if (fundne.length === NIVEAUER.length) rabat = { status: aktive === NIVEAUER.length ? "ACTIVE" : "DELVIS" };
   }
-  return { satser, rabat, gemt: Boolean(data.shop.satser), adgang: await hentAdgang(env) };
+  return { satser, rabat, gemt: Boolean(gemt) };
 }
 
 const satsSchema = z.coerce.number().min(0).max(60);
 export const satserSchema = z.object({ 1: satsSchema, 2: satsSchema, 3: satsSchema });
 
-// Fast levering: rabatten skal også gælde abonnementer og alle senere leveringer.
-// recurringCycleLimit 0 betyder «uden grænse». Uden dette får kun første
-// levering erhvervsprisen, og resten opkræves til listepris.
-const ABONNEMENT = { appliesOnOneTimePurchase: true, appliesOnSubscription: true, recurringCycleLimit: 0 };
+/** Kundegruppen for et niveau. Findes den (f.eks. efter en fejl), genbruges den. */
+async function sikrGruppe(env, n, gemtId) {
+  if (gemtId) {
+    const d = await adminGraphql(env, `query($id: ID!) { segment(id: $id) { id } }`, { id: gemtId }).catch(() => null);
+    if (d?.segment?.id) return d.segment.id;
+  }
+  const navn = gruppeNavn(n);
+  const liste = await adminGraphql(env, `{ segments(first: 250) { nodes { id name } } }`);
+  const findes = liste.segments.nodes.find((x) => x.name === navn);
+  if (findes) return findes.id;
+  const data = await adminGraphql(
+    env,
+    `mutation($name: String!, $query: String!) { segmentCreate(name: $name, query: $query) { segment { id } userErrors { field message } } }`,
+    { name: navn, query: `customer_tags CONTAINS '${TAG.niveau(n)}'` },
+  );
+  return assertNoUserErrors(data.segmentCreate, "Kunne ikke oprette kundegruppen").segment.id;
+}
+
+/** Rabatten for et niveau: opdatér satsen, eller opret den, hvis den mangler. */
+async function sikrRabat(env, n, sats, gruppeId, gemtId) {
+  if (gemtId) {
+    const d = await adminGraphql(
+      env,
+      `mutation($id: ID!, $d: DiscountAutomaticBasicInput!) { discountAutomaticBasicUpdate(id: $id, automaticBasicDiscount: $d) { automaticDiscountNode { id } userErrors { field message } } }`,
+      { id: gemtId, d: rabatIndhold(sats) },
+    );
+    const fejl = d.discountAutomaticBasicUpdate.userErrors ?? [];
+    if (!fejl.length && d.discountAutomaticBasicUpdate.automaticDiscountNode?.id) return gemtId;
+    // Rabatten er slettet i Shopify. Så laver vi den igen nedenfor.
+  }
+  const data = await adminGraphql(
+    env,
+    `mutation($d: DiscountAutomaticBasicInput!) { discountAutomaticBasicCreate(automaticBasicDiscount: $d) { automaticDiscountNode { id } userErrors { field message } } }`,
+    {
+      d: {
+        title: rabatTitel(n),
+        startsAt: new Date().toISOString(),
+        context: { customerSegments: { add: [gruppeId] } },
+        combinesWith: { orderDiscounts: false, productDiscounts: false, shippingDiscounts: true },
+        ...rabatIndhold(sats),
+      },
+    },
+  );
+  return assertNoUserErrors(data.discountAutomaticBasicCreate, `Kunne ikke oprette ${rabatTitel(n)}`).automaticDiscountNode.id;
+}
 
 export async function gemSatser(env, input) {
   const parsed = satserSchema.safeParse(input);
   if (!parsed.success) throw new HttpError(422, "Satserne skal være mellem 0 og 60 %");
   const satser = parsed.data;
-  const config = JSON.stringify({ satser });
+  const { shopId, rabatter: gemte } = await hentGemteRabatter(env);
 
-  const shopData = await adminGraphql(env, `{ shop { id } }`);
-  const shopId = shopData.shop.id;
-  let { rabat } = await hentSatser(env);
-
-  if (!rabat) {
-    const data = await adminGraphql(
-      env,
-      `mutation($d: DiscountAutomaticAppInput!) { discountAutomaticAppCreate(automaticAppDiscount: $d) { automaticAppDiscount { discountId title status } userErrors { field message } } }`,
-      {
-        d: {
-          title: RABAT_TITEL,
-          functionHandle: FUNKTION,
-          discountClasses: ["PRODUCT"],
-          startsAt: new Date().toISOString(),
-          combinesWith: { orderDiscounts: false, productDiscounts: false, shippingDiscounts: true },
-          ...ABONNEMENT,
-          metafields: [{ namespace: RABAT_NAVNERUM, key: "config", type: "json", value: config }],
-        },
-      },
-    );
-    const res = assertNoUserErrors(data.discountAutomaticAppCreate, "Kunne ikke oprette rabatten");
-    rabat = { id: res.automaticAppDiscount.discountId, titel: res.automaticAppDiscount.title, status: res.automaticAppDiscount.status };
-    await saetMetafelter(env, shopId, [{ namespace: "erhverv", key: "rabat_id", type: "single_line_text_field", value: rabat.id }]);
-  } else {
-    await saetMetafelter(env, rabat.id, [{ namespace: RABAT_NAVNERUM, key: "config", type: "json", value: config }]);
-    // Rabatter oprettet før fast levering mangler abonnementsindstillingen.
-    const opd = await adminGraphql(
-      env,
-      `mutation($id: ID!, $d: DiscountAutomaticAppInput!) { discountAutomaticAppUpdate(id: $id, automaticAppDiscount: $d) { userErrors { field message } } }`,
-      { id: rabat.id, d: ABONNEMENT },
-    );
-    assertNoUserErrors(opd.discountAutomaticAppUpdate, "Kunne ikke opdatere rabatten");
+  const rabatter = {};
+  for (const n of NIVEAUER) {
+    const gruppe = await sikrGruppe(env, n, gemte[n]?.gruppe);
+    const rabat = await sikrRabat(env, n, satser[n], gruppe, gemte[n]?.rabat);
+    rabatter[n] = { gruppe, rabat };
   }
-  await saetMetafelter(env, shopId, [{ namespace: "erhverv", key: "niveauer", type: "json", value: JSON.stringify(satser) }]);
-  // Rabatten er gemt. Fejler spærringen, får ejeren besked uden at miste rabatten.
-  const adgang = await slaaAdgangTil(env).catch((e) => ({ findes: false, slaaetTil: false, fejl: String(e?.message ?? e).slice(0, 200) }));
-  return { satser, rabat, gemt: true, adgang };
+  await saetMetafelter(env, shopId, [
+    { namespace: "erhverv", key: "rabatter", type: "json", value: JSON.stringify(rabatter) },
+    { namespace: "erhverv", key: "niveauer", type: "json", value: JSON.stringify(satser) },
+  ]);
+  return { satser, rabat: { status: "ACTIVE" }, gemt: true };
 }
