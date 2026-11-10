@@ -544,6 +544,50 @@ export async function aftaler(env, { kundeId = null } = {}) {
 
 const dkDato = (d) => new Date(d).toLocaleDateString("da-DK", { day: "numeric", month: "long", timeZone: "Europe/Copenhagen" });
 
+// ---------------------------------------------------------------- Erhvervsadgang
+
+// Valideringsfunktionen, der kun lader godkendte erhvervskunder købe
+// erhvervskaffe. Shopify viser ikke custom apps under Betalingsregler, så
+// appen slår selv reglen til, når ejeren gemmer sine rabatter.
+const ADGANG_FUNKTION = "erhverv-adgang";
+const ADGANG_TITEL = "Erhvervsadgang";
+
+async function findAdgang(env) {
+  const data = await adminGraphql(env, `{ validations(first: 25) { nodes { id title enabled shopifyFunction { title } } } }`);
+  return data.validations.nodes.find((v) => v.title === ADGANG_TITEL || v.shopifyFunction?.title === ADGANG_TITEL) ?? null;
+}
+
+/** Status til Indstillinger: slået til, slået fra eller ikke oprettet. Fejler aldrig. */
+export async function hentAdgang(env) {
+  try {
+    const v = await findAdgang(env);
+    return { findes: Boolean(v), slaaetTil: Boolean(v?.enabled) };
+  } catch (e) {
+    return { findes: false, slaaetTil: false, fejl: String(e?.message ?? e).slice(0, 200) };
+  }
+}
+
+export async function slaaAdgangTil(env) {
+  const v = await findAdgang(env);
+  if (!v) {
+    const data = await adminGraphql(
+      env,
+      `mutation($v: ValidationCreateInput!) { validationCreate(validation: $v) { validation { id enabled } userErrors { field message } } }`,
+      // blockOnFailure false: går funktionen selv i stykker, må kunderne stadig handle.
+      { v: { functionHandle: ADGANG_FUNKTION, title: ADGANG_TITEL, enable: true, blockOnFailure: false } },
+    );
+    assertNoUserErrors(data.validationCreate, "Kunne ikke slå erhvervsadgangen til");
+  } else if (!v.enabled) {
+    const data = await adminGraphql(
+      env,
+      `mutation($id: ID!, $v: ValidationUpdateInput!) { validationUpdate(id: $id, validation: $v) { validation { id enabled } userErrors { field message } } }`,
+      { id: v.id, v: { enable: true } },
+    );
+    assertNoUserErrors(data.validationUpdate, "Kunne ikke slå erhvervsadgangen til");
+  }
+  return { findes: true, slaaetTil: true };
+}
+
 // ---------------------------------------------------------------- Rabatsatser
 
 /**
@@ -561,7 +605,7 @@ export async function hentSatser(env) {
     const r = await adminGraphql(env, `query($id: ID!) { node(id: $id) { ... on DiscountAutomaticNode { id automaticDiscount { ... on DiscountAutomaticApp { title status } } } } }`, { id: rabatId });
     if (r.node?.id) rabat = { id: r.node.id, titel: r.node.automaticDiscount?.title, status: r.node.automaticDiscount?.status };
   }
-  return { satser, rabat, gemt: Boolean(data.shop.satser) };
+  return { satser, rabat, gemt: Boolean(data.shop.satser), adgang: await hentAdgang(env) };
 }
 
 const satsSchema = z.coerce.number().min(0).max(60);
@@ -612,5 +656,7 @@ export async function gemSatser(env, input) {
     assertNoUserErrors(opd.discountAutomaticAppUpdate, "Kunne ikke opdatere rabatten");
   }
   await saetMetafelter(env, shopId, [{ namespace: "erhverv", key: "niveauer", type: "json", value: JSON.stringify(satser) }]);
-  return { satser, rabat, gemt: true };
+  // Rabatten er gemt. Fejler spærringen, får ejeren besked uden at miste rabatten.
+  const adgang = await slaaAdgangTil(env).catch((e) => ({ findes: false, slaaetTil: false, fejl: String(e?.message ?? e).slice(0, 200) }));
+  return { satser, rabat, gemt: true, adgang };
 }

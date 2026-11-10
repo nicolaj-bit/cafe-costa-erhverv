@@ -18,7 +18,7 @@ Bygget som Lalatotos forudbestillings-app: **Base44 er serveren**, og appen
 | Ansøgningsformularen | Temablok «Erhvervsansøgning» → `/apps/erhverv` → Base44 `/api/erhverv-proxy` | App proxy. Shopify signerer kaldet; Base44 tjekker signaturen |
 | Portalen | Temablok «Erhvervsportal» på `/pages/erhverv` | Ren Liquid ud fra kundens tags |
 | Erhvervspriser | Rabatfunktionen `erhverv-rabat` | Procentrabat ud fra tagget `erhverv-niveau-1/2/3`. Kræver ikke B2B. Se afsnittet om Plus |
-| Kun for erhvervskunder | Valideringsfunktionen `erhverv-adgang` | Stopper kurv og checkout, hvis der er en vare med produkt-tagget `erhverv`, og kunden ikke har `erhverv-godkendt`. Slås til under Indstillinger → Kasse → Kasseregler |
+| Kun for erhvervskunder | Valideringsfunktionen `erhverv-adgang` | Stopper kurv og checkout, hvis der er en vare med produkt-tagget `erhverv`, og kunden ikke har `erhverv-godkendt`. Appen slår den selv til, når ejeren trykker «Gem rabatter» (Shopify viser ikke custom apps under Betalingsregler) |
 | Virksomheder | Base44-entiteten `Virksomhed` | Kun serveren læser og skriver, efter kontrol af kalderen |
 
 Base44-appen hedder «Café Costa Erhverv» (id `6af2086e391faa45cbbca2d0`,
