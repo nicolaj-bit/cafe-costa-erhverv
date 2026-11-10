@@ -13,9 +13,11 @@ embedded = true
 # read_orders: ordrer i portalen. read_products: erhvervskollektionen.
 # write_discounts: opret den automatiske rabat og gem satserne på den.
 # write_app_proxy: kræves af Shopify, fordi formularen går gennem app proxy.
+# write_checkout_and_accounts_configurations: knappen «Anvend Costas design»
+# lægger farver og skrifter på login-siden og kassen (kun Plus og udviklingsbutikker).
 # Ingen scopes til abonnementer eller betalingsmetoder — de kræver Shopifys
 # godkendelse, og uden den fejler oprettelsen af app-versionen.
-scopes = "read_customers,write_customers,read_orders,read_products,write_discounts,write_app_proxy"
+scopes = "read_customers,write_customers,read_orders,read_products,write_discounts,write_app_proxy,write_checkout_and_accounts_configurations"
 use_legacy_install_flow = false
 
 [auth]
