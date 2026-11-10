@@ -93,6 +93,15 @@
               <input id="By-{{ uid }}" name="by" type="text" autocomplete="address-level2" required maxlength="80">
             </div>
           </div>
+          <div class="costa-form__field">
+            <label for="Placering-{{ uid }}">Hvor skal vognen stå? <span class="costa-muted">(valgfrit)</span></label>
+            <textarea id="Placering-{{ uid }}" name="placering" rows="3" maxlength="500" placeholder="Fx: I gården ved hovedindgangen. Kør ind fra Havnegade."></textarea>
+          </div>
+          <div class="costa-form__field kaffevogn-kort">
+            <label for="Kort-{{ uid }}">Kort med en prik <span class="costa-muted">(valgfrit)</span></label>
+            <input id="Kort-{{ uid }}" name="kort" type="file" accept="image/*,application/pdf" aria-describedby="KortHelp-{{ uid }}" data-kort>
+            <small id="KortHelp-{{ uid }}" class="costa-muted">Tag et skærmbillede af et kort, og sæt en prik, hvor vognen skal stå. Billede eller PDF, højst 10 MB.</small>
+          </div>
         </fieldset>
 
         <fieldset class="kaffevogn-form__group">

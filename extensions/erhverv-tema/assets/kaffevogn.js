@@ -117,7 +117,11 @@
         return visFejl(`Udfyld ${label.toLowerCase()}.`, ugyldig);
       }
 
-      const data = Object.fromEntries(new FormData(form).entries());
+      const alt = new FormData(form);
+      const kort = form.querySelector('[data-kort]')?.files?.[0] ?? null;
+      if (kort && kort.size > 10 * 1024 * 1024) return visFejl('Billedet er for stort. Det må højst fylde 10 MB.', form.querySelector('[data-kort]'));
+      alt.delete('kort');
+      const data = Object.fromEntries(alt.entries());
       let tidligere = null;
       try { tidligere = JSON.parse(sessionStorage.getItem(GEMT) || 'null'); } catch { /* privat vindue */ }
 
@@ -147,26 +151,25 @@
           await fetch('/cart/change.js', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: g.key, quantity: 0 }) });
         }
 
-        const tilKurv = await fetch('/cart/add.js', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({
-            items: [{
-              id: Number(data.variant_id),
-              quantity: 1,
-              properties: {
-                Dato: svar.dato_tekst,
-                Start: data.start,
-                'Gæster': data.gaester,
-                Adresse: `${data.adresse}, ${data.postnr} ${data.by}`,
-                Kontakt: data.kontakt,
-                Telefon: data.telefon,
-                _booking: svar.id,
-                _dato: data.dato,
-              },
-            }],
-          }),
-        });
+        // FormData, så et billede af kortet kan komme med som linjeegenskab.
+        // Shopify gemmer filen og lægger et link på ordren.
+        const varen = new FormData();
+        varen.append('id', data.variant_id);
+        varen.append('quantity', '1');
+        const egenskaber = {
+          Dato: svar.dato_tekst,
+          Start: data.start,
+          'Gæster': data.gaester,
+          Adresse: `${data.adresse}, ${data.postnr} ${data.by}`,
+          Placering: data.placering?.trim() || null,
+          Kontakt: data.kontakt,
+          Telefon: data.telefon,
+          _booking: svar.id,
+          _dato: data.dato,
+        };
+        for (const [k, v] of Object.entries(egenskaber)) if (v) varen.append(`properties[${k}]`, v);
+        if (kort) varen.append('properties[Kort]', kort, kort.name);
+        const tilKurv = await fetch('/cart/add.js', { method: 'POST', headers: { Accept: 'application/json' }, body: varen });
         if (!tilKurv.ok) throw new Error(`Kaffevognen kunne ikke lægges i kurven. Ring på ${telefon}.`);
         try { sessionStorage.setItem(GEMT, JSON.stringify({ id: svar.id, dato: data.dato })); } catch { /* privat vindue */ }
         window.location.href = form.dataset.kurv;

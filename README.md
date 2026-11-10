@@ -81,7 +81,9 @@ godkendelse, og uden den fejler oprettelsen af app-versionen.
 ## Kaffevognen
 
 Kunden vælger dag, varighed, tid, gæster, adresse og kontakt og betaler i den
-almindelige checkout. Felterne følger med som linjeegenskaber, så de står på
+almindelige checkout. Kunden kan også beskrive, hvor vognen skal stå, og vedhæfte et kort med en
+prik (billede eller PDF, højst 10 MB; Shopify gemmer filen). Felterne følger
+med som linjeegenskaber, så de står på
 ordren og i ordrebekræftelsen; `_booking` og `_dato` er skjult for kunden.
 
 - «Læg i kurv» reserverer dagen i 15 minutter. Udløbne reservationer ryddes,

@@ -41,3 +41,10 @@
 .kaffevogn-kal__prik--optaget { background: transparent; border-style: dashed; }
 .kaffevogn-valgt { margin: 0; font-weight: 600; }
 .kaffevogn-valgt[hidden], .kaffevogn-form [data-fejl][hidden] { display: none; }
+.kaffevogn-form textarea { min-height: 96px; }
+.kaffevogn-kort input[type="file"] { padding: var(--costa-space-s); background: var(--costa-color-surface); cursor: pointer; }
+.kaffevogn-kort input[type="file"]::file-selector-button {
+  margin-right: var(--costa-space-s); padding: 0.6rem 1.4rem; cursor: pointer;
+  border: var(--costa-line); border-radius: var(--costa-button-radius);
+  background: var(--costa-color-bg); color: var(--costa-color-text); font: 600 var(--costa-text-small) var(--costa-font-body);
+}
