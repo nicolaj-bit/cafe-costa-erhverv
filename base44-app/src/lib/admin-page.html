@@ -13,6 +13,7 @@
   <body data-side="__SIDE__">
     <ui-nav-menu>
       <a href="/api/admin" rel="home">Ansøgninger</a>
+      <a href="/api/admin-risteplan">Risteplan</a>
       <a href="/api/admin-indstillinger">Prisniveauer</a>
     </ui-nav-menu>
 
@@ -22,6 +23,7 @@
     <div id="side-ansoegninger" hidden>
       <s-page heading="Erhvervskunder" inlineSize="large">
         <s-button slot="primary-action" id="refresh">Opdatér</s-button>
+        <s-button slot="secondary-actions" href="/api/admin-risteplan">Risteplan</s-button>
         <s-button slot="secondary-actions" href="/api/admin-indstillinger">Prisniveauer</s-button>
 
         <div id="error" hidden>
@@ -67,6 +69,70 @@
       </s-modal>
     </div>
     <!--/SIDE:ansoegninger-->
+
+    <!--SIDE:risteplan-->
+    <div id="side-risteplan" hidden>
+      <s-page heading="Risteplan" inlineSize="large">
+        <s-button slot="primary-action" id="print">Udskriv</s-button>
+        <s-button slot="secondary-actions" href="/api/admin">Ansøgninger</s-button>
+
+        <div id="plan-error" hidden>
+          <s-banner tone="critical" heading="Kunne ikke hente risteplanen">
+            <s-paragraph id="plan-error-text"></s-paragraph>
+          </s-banner>
+        </div>
+
+        <s-section>
+          <s-stack direction="inline" gap="base" alignItems="center">
+            <s-button id="uge-forrige" accessibilityLabel="Forrige uge">←</s-button>
+            <s-heading id="uge-titel">Denne uge</s-heading>
+            <s-button id="uge-naeste" accessibilityLabel="Næste uge">→</s-button>
+          </s-stack>
+          <s-paragraph color="subdued" id="uge-dato"></s-paragraph>
+        </s-section>
+
+        <s-section heading="Rist i alt">
+          <s-table id="plan-ialt" loading>
+            <s-table-header-row>
+              <s-table-header listSlot="primary">Kaffe</s-table-header>
+              <s-table-header format="numeric">I alt</s-table-header>
+              <s-table-header format="numeric">Bestilt, ikke sendt</s-table-header>
+              <s-table-header format="numeric">Fast levering i ugen</s-table-header>
+            </s-table-header-row>
+            <s-table-body id="plan-ialt-rows"></s-table-body>
+          </s-table>
+        </s-section>
+
+        <s-section heading="Bestilt og ikke sendt">
+          <s-paragraph color="subdued">Ordrer, der er kommet ind og venter på at blive ristet og sendt — også fra tidligere uger.</s-paragraph>
+          <s-table id="plan-ventende" loading>
+            <s-table-header-row>
+              <s-table-header listSlot="primary">Kunde</s-table-header>
+              <s-table-header listSlot="secondary">Kaffe</s-table-header>
+              <s-table-header format="numeric">Kg</s-table-header>
+              <s-table-header>Ordre</s-table-header>
+              <s-table-header listSlot="inline">Type</s-table-header>
+            </s-table-header-row>
+            <s-table-body id="plan-ventende-rows"></s-table-body>
+          </s-table>
+        </s-section>
+
+        <s-section heading="Faste leveringer i ugen">
+          <s-paragraph color="subdued">Regnet ud fra kundens seneste ordre og rytmen. Er et abonnement sat på pause eller opsagt i Shopify Subscriptions, kan det stå her, til næste ordre udebliver.</s-paragraph>
+          <s-table id="plan-forventede" loading>
+            <s-table-header-row>
+              <s-table-header listSlot="primary">Kunde</s-table-header>
+              <s-table-header listSlot="secondary">Kaffe</s-table-header>
+              <s-table-header format="numeric">Kg</s-table-header>
+              <s-table-header>Forventet</s-table-header>
+              <s-table-header listSlot="inline">Rytme</s-table-header>
+            </s-table-header-row>
+            <s-table-body id="plan-forventede-rows"></s-table-body>
+          </s-table>
+        </s-section>
+      </s-page>
+    </div>
+    <!--/SIDE:risteplan-->
 
     <!--SIDE:indstillinger-->
     <div id="side-indstillinger" hidden>

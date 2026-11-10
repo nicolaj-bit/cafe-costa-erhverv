@@ -269,9 +269,71 @@ async function gemSatser() {
   }
 }
 
+// ------------------------------------------------------------------ Risteplan
+
+let planUger = 0;
+
+const kg = (n) => (Math.round(n * 10) / 10).toLocaleString("da-DK") + " kg";
+const kortDato = (iso) => new Date(iso).toLocaleDateString("da-DK", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Copenhagen" });
+const TYPE = { fast: { tekst: "Fast levering", tone: "info" }, enkelt: { tekst: "Enkeltkøb", tone: "neutral" } };
+
+function tomRaekke(tekst) {
+  return h("s-table-row", {}, h("s-table-cell", {}, tekst));
+}
+
+async function loadPlan() {
+  for (const id of ["plan-ialt", "plan-ventende", "plan-forventede"]) $(id).setAttribute("loading", "");
+  $("plan-error").hidden = true;
+  $("uge-titel").textContent = planUger === 0 ? "Denne uge" : planUger === 1 ? "Næste uge" : planUger === -1 ? "Sidste uge" : (planUger > 0 ? "Om " + planUger + " uger" : planUger + " uger");
+  try {
+    const p = await api("risteplan", { uger: planUger });
+    const slut = new Date(new Date(p.til).getTime() - 1);
+    $("uge-dato").textContent = kortDato(p.fra) + " – " + kortDato(slut.toISOString());
+
+    $("plan-ialt-rows").replaceChildren(...(p.ialt.length
+      ? p.ialt.map((r) => h("s-table-row", {},
+        h("s-table-cell", {}, h("s-stack", { gap: "small-500" },
+          h("s-text", { type: "strong" }, r.kaffe),
+          r.ukendt ? h("s-text", { tone: "caution" }, r.ukendt + " stk. uden vægt i variantnavnet") : null)),
+        h("s-table-cell", {}, h("s-text", { type: "strong" }, kg(r.kg))),
+        h("s-table-cell", {}, kg(r.ventendeKg)),
+        h("s-table-cell", {}, kg(r.forventetKg))))
+      : [tomRaekke("Intet at riste i ugen")]));
+
+    $("plan-ventende-rows").replaceChildren(...(p.ventende.length
+      ? p.ventende.map((x) => h("s-table-row", {},
+        h("s-table-cell", {}, h("s-text", { type: "strong" }, x.kunde)),
+        h("s-table-cell", {}, x.kaffe + " · " + x.antal + " × " + x.variant),
+        h("s-table-cell", {}, x.kg ? kg(x.kg) : "–"),
+        h("s-table-cell", {}, h("s-stack", { gap: "small-500" }, h("s-text", {}, x.ordre), h("s-text", { color: "subdued" }, kortDato(x.dato)))),
+        h("s-table-cell", {}, h("s-badge", { tone: (TYPE[x.type] || TYPE.enkelt).tone }, (TYPE[x.type] || TYPE.enkelt).tekst))))
+      : [tomRaekke("Ingen ordrer venter")]));
+
+    $("plan-forventede-rows").replaceChildren(...(p.forventede.length
+      ? p.forventede.map((x) => h("s-table-row", {},
+        h("s-table-cell", {}, h("s-text", { type: "strong" }, x.kunde)),
+        h("s-table-cell", {}, x.kaffe + " · " + x.antal + " × " + x.variant),
+        h("s-table-cell", {}, x.kg ? kg(x.kg) : "–"),
+        h("s-table-cell", {}, kortDato(x.dato)),
+        h("s-table-cell", {}, x.rytme || "–")))
+      : [tomRaekke("Ingen faste leveringer i ugen")]));
+  } catch (e) {
+    $("plan-error-text").textContent = e.message;
+    $("plan-error").hidden = false;
+  } finally {
+    for (const id of ["plan-ialt", "plan-ventende", "plan-forventede"]) $(id).removeAttribute("loading");
+  }
+}
+
 // ------------------------------------------------------------------ Start
 
-if (side === "indstillinger") {
+if (side === "risteplan") {
+  $("side-risteplan").hidden = false;
+  $("uge-forrige").addEventListener("click", () => { planUger = Math.max(-4, planUger - 1); loadPlan(); });
+  $("uge-naeste").addEventListener("click", () => { planUger = Math.min(8, planUger + 1); loadPlan(); });
+  $("print").addEventListener("click", () => window.print());
+  loadPlan();
+} else if (side === "indstillinger") {
   $("side-indstillinger").hidden = false;
   $("save").addEventListener("click", gemSatser);
   loadSatser();
