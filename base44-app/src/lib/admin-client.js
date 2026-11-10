@@ -269,28 +269,11 @@ async function gemSatser() {
   }
 }
 
-async function anvendDesign() {
-  const btn = $("design");
-  btn.setAttribute("loading", "");
-  $("design-status").textContent = "";
-  try {
-    const res = await api("design");
-    $("design-status").textContent = "Designet er lagt på «" + res.konfiguration + "»" + (res.publiceret ? " og er live." : ". Konfigurationen er ikke publiceret endnu.");
-    toast("Costas design er anvendt");
-  } catch (e) {
-    $("design-status").textContent = "Kunne ikke anvende designet: " + e.message;
-    toast("Designet blev ikke anvendt", true);
-  } finally {
-    btn.removeAttribute("loading");
-  }
-}
-
 // ------------------------------------------------------------------ Start
 
 if (side === "indstillinger") {
   $("side-indstillinger").hidden = false;
   $("save").addEventListener("click", gemSatser);
-  $("design").addEventListener("click", anvendDesign);
   loadSatser();
 } else {
   $("side-ansoegninger").hidden = false;
