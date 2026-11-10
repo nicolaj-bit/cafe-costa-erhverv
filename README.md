@@ -17,7 +17,7 @@ Bygget som Lalatotos forudbestillings-app: **Base44 er serveren**, og appen
 | Data til ejerens side | Base44 `/api/admin-data` | Kræver App Bridges ID token (signeret med appens client secret) |
 | Ansøgningsformularen | Temablok «Erhvervsansøgning» → `/apps/erhverv` → Base44 `/api/erhverv-proxy` | App proxy. Shopify signerer kaldet; Base44 tjekker signaturen |
 | Portalen | Temablok «Erhvervsportal» på `/pages/erhverv` | Ren Liquid ud fra kundens tags |
-| Erhvervspriser | Rabatfunktionen `erhverv-rabat` | Procentrabat ud fra tagget `erhverv-niveau-1/2/3`. Kræver hverken Plus eller B2B |
+| Erhvervspriser | Rabatfunktionen `erhverv-rabat` | Procentrabat ud fra tagget `erhverv-niveau-1/2/3`. Kræver ikke B2B. Se afsnittet om Plus |
 | Kun for erhvervskunder | Valideringsfunktionen `erhverv-adgang` | Stopper kurv og checkout, hvis der er en vare med produkt-tagget `erhverv`, og kunden ikke har `erhverv-godkendt`. Slås til under Indstillinger → Kasse → Kasseregler |
 | Virksomheder | Base44-entiteten `Virksomhed` | Kun serveren læser og skriver, efter kontrol af kalderen |
 
