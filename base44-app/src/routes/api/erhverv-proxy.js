@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { HttpError, shopifyEnv, verifyProxySignature } from "@/lib/shopify.server";
 import { aftaler, modtagAnsoegning } from "@/lib/erhverv.server";
+import { kalender, reserver } from "@/lib/kaffevogn.server";
 
 // Butikkens ansøgningsformular sender hertil gennem Shopifys app proxy:
 // /apps/erhverv i butikken → /api/erhverv-proxy her. Kun Shopify kan lave
@@ -19,10 +20,14 @@ export const Route = createFileRoute("/api/erhverv-proxy")({
     handlers: {
       // Portalens «Min aftale»: kundens egne faste leveringer. Shopify sætter
       // logged_in_customer_id i den signerede adresse, så kunden kan kun se sine egne.
-      GET: async ({ request }) => {
+      GET: async ({ request, context }) => {
         try {
           const env = shopifyEnv();
           const { loggedInCustomerId } = await verifyProxySignature(request.url, env);
+          // Kaffevognens kalender: optagede dage. Kræver ikke login.
+          if (new URL(request.url).searchParams.get("visning") === "kaffevogn") {
+            return json({ ok: true, ...(await kalender(context.getBase44(), env)) });
+          }
           if (!loggedInCustomerId) throw new HttpError(401, "Log ind for at se jeres aftale");
           const { aftaler: liste } = await aftaler(env, { kundeId: loggedInCustomerId });
           // Kun det, kunden skal se. Ingen interne noter eller e-mails.
@@ -46,6 +51,10 @@ export const Route = createFileRoute("/api/erhverv-proxy")({
           const env = shopifyEnv();
           const { loggedInCustomerId } = await verifyProxySignature(request.url, env);
           const felter = await laesFelter(request);
+          // Kaffevognen: hold dagen i 15 minutter, mens kunden betaler.
+          if (felter.handling === "kaffevogn-reserver") {
+            return json({ ok: true, ...(await reserver(context.getBase44(), env, felter)) });
+          }
           await modtagAnsoegning(context.getBase44(), env, felter, { loggedInCustomerId });
           return json({ ok: true });
         } catch (e) {

@@ -18,6 +18,8 @@ Bygget som Lalatotos forudbestillings-app: **Base44 er serveren**, og appen
 | Ansøgningsformularen | Temablok «Erhvervsansøgning» → `/apps/erhverv` → Base44 `/api/erhverv-proxy` | App proxy. Shopify signerer kaldet; Base44 tjekker signaturen |
 | Portalen | Temablok «Erhvervsportal» på `/pages/erhverv` | Ren Liquid ud fra kundens tags |
 | Erhvervspriser | Shopifys almindelige automatiske rabatter «Erhvervsrabat 1/2/3» | Hver gælder kun kundegruppen med tagget `erhverv-niveau-1/2/3`, også på faste leveringer. Appen opretter og retter dem, når ejeren trykker «Gem rabatter». Virker på alle Shopify-planer |
+| Kaffevogn | Temablok «Book kaffevognen» på siden Kaffevogn → `/apps/erhverv` (GET `?visning=kaffevogn`, POST `handling=kaffevogn-reserver`) | Kalender, reservation i 15 minutter og kurv. Bookinger i Base44-entiteten `Booking`. Optagede og lukkede dage i shop-metafeltet `costa.kaffevogn_optaget`, område og varsel i `costa.kaffevogn_indstillinger` |
+| Webhooks | Base44 `/api/webhooks` | `orders/create` sætter bookingen til betalt; `orders/cancelled` og `refunds/create` frigiver dagen. Signaturen tjekkes med client secret |
 | Virksomheder | Base44-entiteten `Virksomhed` | Kun serveren læser og skriver, efter kontrol af kalderen |
 
 Base44-appen hedder «Café Costa Erhverv» (id `6af2086e391faa45cbbca2d0`,
@@ -75,6 +77,23 @@ rigtige butik vælges *Custom distribution* i Dev Dashboard.
 og `write_app_proxy`. Det sidste kræver Shopify, fordi formularen går gennem
 app proxy — uden det afvises app-versionen. Ingen scopes til abonnementer eller betalingsmetoder — de kræver Shopifys
 godkendelse, og uden den fejler oprettelsen af app-versionen.
+
+## Kaffevognen
+
+Kunden vælger dag, varighed, tid, gæster, adresse og kontakt og betaler i den
+almindelige checkout. Felterne følger med som linjeegenskaber, så de står på
+ordren og i ordrebekræftelsen; `_booking` og `_dato` er skjult for kunden.
+
+- «Læg i kurv» reserverer dagen i 15 minutter. Udløbne reservationer ryddes,
+  hver gang kalenderen eller fanen Kaffevogn åbnes.
+- Uden Shopify Plus er der ingen valideringsfunktion i checkout. Reservationen
+  er spærringen. Betaler to alligevel for samme dag, markeres bookingen
+  «Skal tjekkes» under fanen Kaffevogn, så ejeren kan refundere den ene.
+- Postnumre uden for området og for kort varsel afvises med «Ring på 52 76 04
+  60, så finder vi en løsning». Begge sættes under fanen Kaffevogn.
+- Produktet «Kaffevogn» (type `Kaffevogn`) er skjult i søgning og ligger ikke
+  i nogen kollektion. Står prisen på 0 kr., kan det ikke bookes online.
+- Udkast til afbestillingsbetingelser: `docs/kaffevogn-afbestilling.md`.
 
 ## Mails
 
