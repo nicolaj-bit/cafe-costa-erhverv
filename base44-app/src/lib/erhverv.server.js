@@ -293,6 +293,11 @@ export async function hentSatser(env) {
 const satsSchema = z.coerce.number().min(0).max(60);
 export const satserSchema = z.object({ 1: satsSchema, 2: satsSchema, 3: satsSchema });
 
+// Fast levering: rabatten skal også gælde abonnementer og alle senere leveringer.
+// recurringCycleLimit 0 betyder «uden grænse». Uden dette får kun første
+// levering erhvervsprisen, og resten opkræves til listepris.
+const ABONNEMENT = { appliesOnOneTimePurchase: true, appliesOnSubscription: true, recurringCycleLimit: 0 };
+
 export async function gemSatser(env, input) {
   const parsed = satserSchema.safeParse(input);
   if (!parsed.success) throw new HttpError(422, "Satserne skal være mellem 0 og 60 %");
@@ -314,6 +319,7 @@ export async function gemSatser(env, input) {
           discountClasses: ["PRODUCT"],
           startsAt: new Date().toISOString(),
           combinesWith: { orderDiscounts: false, productDiscounts: false, shippingDiscounts: true },
+          ...ABONNEMENT,
           metafields: [{ namespace: RABAT_NAVNERUM, key: "config", type: "json", value: config }],
         },
       },
@@ -323,6 +329,13 @@ export async function gemSatser(env, input) {
     await saetMetafelter(env, shopId, [{ namespace: "erhverv", key: "rabat_id", type: "single_line_text_field", value: rabat.id }]);
   } else {
     await saetMetafelter(env, rabat.id, [{ namespace: RABAT_NAVNERUM, key: "config", type: "json", value: config }]);
+    // Rabatter oprettet før fast levering mangler abonnementsindstillingen.
+    const opd = await adminGraphql(
+      env,
+      `mutation($id: ID!, $d: DiscountAutomaticAppInput!) { discountAutomaticAppUpdate(id: $id, automaticAppDiscount: $d) { userErrors { field message } } }`,
+      { id: rabat.id, d: ABONNEMENT },
+    );
+    assertNoUserErrors(opd.discountAutomaticAppUpdate, "Kunne ikke opdatere rabatten");
   }
   await saetMetafelter(env, shopId, [{ namespace: "erhverv", key: "niveauer", type: "json", value: JSON.stringify(satser) }]);
   return { satser, rabat, gemt: true };
