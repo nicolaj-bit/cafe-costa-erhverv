@@ -1,15 +1,16 @@
-// Ejerens side i Shopify admin. Kører i browseren inde i admin; data hentes
-// fra /api/admin-data med App Bridges ID token.
+// Ejerens app i Shopify admin. Kører i browseren inde i admin; data hentes
+// fra /api/admin-data med App Bridges ID token. Menu, titellinje, beskeder og
+// bekræftelser går gennem App Bridge; alt indhold i rammen bygges her.
 
 const $ = (id) => document.getElementById(id);
-const side = document.body.dataset.side;
 
 /** Laver et element. Tekst sættes altid som tekst, aldrig som HTML. */
 function h(tag, attrs = {}, ...children) {
   const el = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
     if (v === false || v == null) continue;
-    el.setAttribute(k, v === true ? "" : String(v));
+    if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2), v);
+    else el.setAttribute(k, v === true ? "" : String(v));
   }
   for (const c of children.flat()) {
     if (c == null || c === false) continue;
@@ -26,46 +27,119 @@ async function api(action, extra = {}) {
     body: JSON.stringify({ ...extra, action }),
   });
   const body = await res.json().catch(() => null);
-  if (!res.ok) throw new Error((body && body.fejl) || "HTTP " + res.status);
+  if (!res.ok) throw new Error((body && body.fejl) || "Fejl " + res.status);
   return body;
 }
 
-const toast = (msg, isError) => window.shopify.toast.show(msg, { isError: Boolean(isError) });
+const besked = (msg, fejl) => window.shopify.toast.show(msg, { isError: Boolean(fejl), duration: fejl ? 8000 : 4000 });
+
+/** Shopify admins eget bekræftelsesvindue. Svarer true ved Ja. */
+function bekraeft({ titel, tekst, ja }) {
+  const modal = $("bekraeft");
+  if (!modal || typeof modal.show !== "function") return Promise.resolve(window.confirm(tekst));
+  $("bekraeft-titel").setAttribute("title", titel);
+  $("bekraeft-tekst").textContent = tekst;
+  $("bekraeft-ja").textContent = ja;
+  return new Promise((resolve) => {
+    let svar = false;
+    const jaKnap = $("bekraeft-ja");
+    const nejKnap = $("bekraeft-nej");
+    const vedJa = () => { svar = true; modal.hide(); };
+    const vedNej = () => modal.hide();
+    const lukket = () => {
+      jaKnap.removeEventListener("click", vedJa);
+      nejKnap.removeEventListener("click", vedNej);
+      modal.removeEventListener("hide", lukket);
+      resolve(svar);
+    };
+    jaKnap.addEventListener("click", vedJa);
+    nejKnap.addEventListener("click", vedNej);
+    modal.addEventListener("hide", lukket);
+    modal.show();
+  });
+}
+
+async function travl(knap, fn) {
+  knap.setAttribute("aria-busy", "true");
+  knap.disabled = true;
+  try {
+    return await fn();
+  } finally {
+    knap.removeAttribute("aria-busy");
+    knap.disabled = false;
+  }
+}
+
+const dato = (iso) => (iso ? new Date(iso).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Copenhagen" }) : "–");
+const langDato = (iso) => (iso ? new Date(iso).toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long", timeZone: "Europe/Copenhagen" }) : "–");
+const kortDato = (iso) => new Date(iso).toLocaleDateString("da-DK", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Copenhagen" });
+const kr = (n, valuta = "DKK") => Number(n || 0).toLocaleString("da-DK", { style: "currency", currency: valuta });
+const kg = (n) => (Math.round(n * 10) / 10).toLocaleString("da-DK") + " kg";
+const adminLink = (type, id) => (id ? "shopify://admin/" + type + "/" + String(id).split("/").pop() : null);
 
 const STATUS = {
-  afventer: { tekst: "Afventer", tone: "warning" },
-  godkendt: { tekst: "Godkendt", tone: "success" },
-  afvist: { tekst: "Afvist", tone: "critical" },
+  afventer: "Afventer",
+  godkendt: "Godkendt",
+  afvist: "Afvist",
+  aktiv: "Aktiv",
+  fejlet: "Fejlet trækning",
 };
+const maerke = (status) => h("span", { class: "maerke maerke--" + status }, STATUS[status] || status);
 const KOPPER = { "under-50": "Under 50", "50-150": "50–150", "150-300": "150–300", "over-300": "Over 300" };
 
-const dato = (iso) =>
-  iso ? new Date(iso).toLocaleDateString("da-DK", { day: "numeric", month: "short", year: "numeric", timeZone: "Europe/Copenhagen" }) : "–";
+function felt(label, ...vaerdi) {
+  const tom = vaerdi.every((v) => v == null || v === "");
+  return h("div", { class: "felt" }, h("span", { class: "label" }, label), h("span", {}, tom ? "–" : vaerdi));
+}
 
-const kundeLink = (gid) => {
-  const id = String(gid || "").split("/").pop();
-  return id ? "shopify://admin/customers/" + id : null;
+function visFejl(id, e) {
+  const el = $(id);
+  el.replaceChildren(h("strong", {}, "Noget gik galt. "), e.message);
+  el.hidden = false;
+}
+
+// ------------------------------------------------------------------ Faner
+
+const FANER = {
+  ansoegninger: { titel: "Ansøgninger", sti: "/api/admin-ansoegninger" },
+  aftaler: { titel: "Aftaler", sti: "/api/admin-aftaler" },
+  indstillinger: { titel: "Indstillinger", sti: "/api/admin-indstillinger" },
 };
+const STIER = { "/api/admin": "ansoegninger", "/api/admin-ansoegninger": "ansoegninger", "/api/admin-aftaler": "aftaler", "/api/admin-risteplan": "aftaler", "/api/admin-indstillinger": "indstillinger" };
+const indlaest = new Set();
+
+function visFane(fane, { push = false } = {}) {
+  if (!FANER[fane]) fane = "ansoegninger";
+  for (const navn of Object.keys(FANER)) $("fane-" + navn).hidden = navn !== fane;
+  for (const a of document.querySelectorAll(".tab")) {
+    if (a.dataset.fane === fane) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
+  }
+  $("titel").setAttribute("title", FANER[fane].titel);
+  if (push && location.pathname !== FANER[fane].sti) history.pushState({ fane }, "", FANER[fane].sti + location.search);
+  if (!indlaest.has(fane)) {
+    indlaest.add(fane);
+    if (fane === "ansoegninger") hentAnsoegninger();
+    if (fane === "aftaler") { hentAftaler(); hentPlan(); }
+    if (fane === "indstillinger") hentSatser();
+  }
+  window.scrollTo(0, 0);
+}
+
+function saetTal(id, n) {
+  const el = $(id);
+  el.textContent = String(n);
+  el.hidden = !n;
+}
 
 // ------------------------------------------------------------------ Ansøgninger
 
-let alle = [];
+let ansoegninger = [];
 let satser = { 1: 10, 2: 15, 3: 20 };
-let valgt = null;
 
-function stat(label, value, tone) {
-  return h("s-box", { padding: "base", border: "base", borderRadius: "base", background: "base" },
-    h("s-text", { color: "subdued" }, label),
-    h("s-heading", {}, h("s-text", tone ? { tone } : {}, value)));
-}
-
-function renderStats() {
-  const antal = (s) => alle.filter((v) => v.status === s).length;
-  $("stats").replaceChildren(
-    stat("Afventer", antal("afventer"), antal("afventer") > 0 ? "caution" : null),
-    stat("Godkendte", antal("godkendt")),
-    stat("Afviste", antal("afvist")),
-  );
+function filterVaerdi() {
+  const valgt = document.querySelector('input[name="filter"]:checked');
+  return valgt ? valgt.value : "afventer";
 }
 
 function matcher(v, q) {
@@ -73,277 +147,332 @@ function matcher(v, q) {
   return [v.firmanavn, v.cvr, v.kontaktperson, v.email, v.by].some((f) => String(f || "").toLowerCase().includes(q));
 }
 
-function row(v) {
-  const s = STATUS[v.status] || { tekst: v.status, tone: "neutral" };
-  return h("s-table-row", {},
-    h("s-table-cell", {},
-      h("s-stack", { gap: "small-500" },
-        h("s-text", { type: "strong" }, v.firmanavn),
-        h("s-text", { color: "subdued" }, "CVR " + v.cvr))),
-    h("s-table-cell", {},
-      h("s-stack", { gap: "small-500" },
-        h("s-text", {}, v.kontaktperson),
-        h("s-text", { color: "subdued" }, v.email))),
-    h("s-table-cell", {}, KOPPER[v.kopper_pr_dag] || v.kopper_pr_dag || "–"),
-    h("s-table-cell", {}, dato(v.oprettet || v.created_date)),
-    h("s-table-cell", {},
-      h("s-stack", { direction: "inline", gap: "small-200" },
-        h("s-badge", { tone: s.tone }, s.tekst),
-        v.status === "godkendt" && v.prisniveau ? h("s-badge", {}, "Niveau " + v.prisniveau) : null)),
-    h("s-table-cell", {}, h("s-button", { "data-id": v.id }, "Se ansøgning")));
+function ansoegningsLinje(v) {
+  const handling = v.status === "afventer"
+    ? h("button", { class: "btn btn--primary", onclick: () => visAnsoegning(v.id) }, "Godkend")
+    : h("button", { class: "btn", onclick: () => visAnsoegning(v.id) }, v.status === "godkendt" ? "Se aftale" : "Se ansøgning");
+  return h("article", { class: "linje" },
+    h("div", { class: "linje__hoved" },
+      h("h3", {}, v.firmanavn),
+      h("span", { class: "mono muted" }, "CVR " + v.cvr)),
+    h("div", { class: "linje__info small" },
+      h("span", {}, v.kontaktperson),
+      h("span", { class: "muted" }, [v.postnr, v.by].filter(Boolean).join(" "))),
+    h("div", { class: "linje__info small" },
+      h("span", { class: "label" }, "Oprettet"),
+      h("span", {}, dato(v.oprettet || v.created_date))),
+    maerke(v.status),
+    h("div", { class: "linje__handling" }, handling));
 }
 
-function renderRows() {
-  const q = $("search").value.trim().toLowerCase();
-  const status = $("status").value || "alle";
-  const vist = alle.filter((v) => (status === "alle" || v.status === status) && matcher(v, q));
-  $("rows").replaceChildren(
-    ...(vist.length
-      ? vist.map(row)
-      : [h("s-table-row", {}, h("s-table-cell", {}, status === "afventer" ? "Ingen ansøgninger venter" : "Ingen ansøgninger"))]),
-  );
-  for (const btn of $("rows").querySelectorAll("s-button[data-id]")) {
-    btn.addEventListener("click", () => visDetalje(btn.dataset.id));
-  }
+function visAnsoegningsListe() {
+  const q = $("soeg").value.trim().toLowerCase();
+  const filter = filterVaerdi();
+  const vist = ansoegninger.filter((v) => (filter === "alle" || v.status === filter) && matcher(v, q));
+  $("ans-liste").replaceChildren(...(vist.length
+    ? vist.map(ansoegningsLinje)
+    : [h("p", { class: "tom" }, filter === "afventer" && !q ? "Ingen nye ansøgninger. Godt gået." : "Ingen ansøgninger her.")]));
 }
 
-async function load() {
-  $("table").setAttribute("loading", "");
-  $("refresh").setAttribute("loading", "");
-  $("error").hidden = true;
+async function hentAnsoegninger() {
+  $("ans-fejl").hidden = true;
   try {
     const [liste, s] = await Promise.all([api("list", { status: "alle" }), api("satser").catch(() => null)]);
-    alle = liste.virksomheder;
+    ansoegninger = liste.virksomheder;
     if (s) satser = s.satser;
-    renderStats();
-    renderRows();
+    saetTal("tal-ansoegninger", ansoegninger.filter((v) => v.status === "afventer").length);
+    visAnsoegningsListe();
   } catch (e) {
-    $("error-text").textContent = e.message;
-    $("error").hidden = false;
-  } finally {
-    $("table").removeAttribute("loading");
-    $("refresh").removeAttribute("loading");
+    $("ans-liste").replaceChildren();
+    visFejl("ans-fejl", e);
   }
 }
 
-function felt(label, value) {
-  return h("s-stack", { gap: "small-500" },
-    h("s-text", { color: "subdued" }, label),
-    h("s-text", {}, value == null || value === "" ? "–" : value));
+function lukDetalje(liste, detalje) {
+  $(detalje).hidden = true;
+  $(detalje).replaceChildren();
+  $(liste).hidden = false;
+  window.scrollTo(0, 0);
 }
 
-function visDetalje(id) {
-  const v = alle.find((x) => x.id === id);
+function visAnsoegning(id) {
+  const v = ansoegninger.find((x) => x.id === id);
   if (!v) return;
-  valgt = v;
-  const s = STATUS[v.status] || { tekst: v.status, tone: "neutral" };
-  const link = kundeLink(v.shopify_customer_id);
-
-  const niveauVaelger = h("s-choice-list", { label: "Prisniveau", name: "prisniveau", id: "prisniveau" },
+  const nuvaerende = v.prisniveau || 2;
+  const rabatValg = h("fieldset", { class: "valg-gruppe", "aria-label": "Rabat" },
     [1, 2, 3].map((n) =>
-      h("s-choice", { value: String(n), selected: (v.prisniveau || 1) === n }, "Niveau " + n + " — " + satser[n] + " % rabat")));
+      h("label", { class: "valg" },
+        h("input", { type: "radio", name: "rabat", value: String(n), checked: nuvaerende === n }),
+        h("span", {}, satser[n] + " % rabat"))));
 
-  $("detail").setAttribute("heading", v.firmanavn);
-  // replaceChildren skriver null som tekst, så tomme dele sorteres fra først.
-  $("detail-body").replaceChildren(...[
-    h("s-stack", { direction: "inline", gap: "small-200" },
-      h("s-badge", { tone: s.tone }, s.tekst),
-      v.prisniveau ? h("s-badge", {}, "Niveau " + v.prisniveau) : null,
-      v.nyhedsbrev ? h("s-badge", { tone: "info" }, "Vil have nyhedsbrev") : null),
-    h("s-grid", { gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "base" },
-      felt("CVR", v.cvr),
-      felt("Kontaktperson", v.kontaktperson),
-      felt("E-mail", v.email),
-      felt("Telefon", v.telefon),
-      felt("Leveringsadresse", [v.leveringsadresse, [v.postnr, v.by].filter(Boolean).join(" ")].filter(Boolean).join(", ")),
-      felt("Kopper pr. dag", KOPPER[v.kopper_pr_dag] || v.kopper_pr_dag),
-      felt("Maskine", v.maskine),
-      felt("Ansøgt", dato(v.oprettet || v.created_date)),
-      v.godkendt_dato ? felt("Godkendt", dato(v.godkendt_dato)) : null),
-    link ? h("s-link", { href: link, target: "_top" }, "Åbn kunden i Shopify") : null,
-    h("s-divider"),
-    v.status === "afvist"
-      ? h("s-paragraph", { color: "subdued" }, "Ansøgningen er afvist. Du kan stadig godkende den, hvis I har talt sammen.")
-      : null,
-    niveauVaelger,
-  ].filter(Boolean));
-  $("approve").textContent = v.status === "godkendt" ? "Skift prisniveau" : "Godkend";
-  // Polaris ser bort fra hidden, så knappen slås fra i stedet.
-  if (v.status === "afvist") $("reject").setAttribute("disabled", "");
-  else $("reject").removeAttribute("disabled");
-  $("detail").showOverlay();
+  const knapper = [];
+  if (v.status === "godkendt") {
+    knapper.push(h("button", { class: "btn btn--primary", onclick: (e) => godkend(v, e.currentTarget) }, "Gem rabat"));
+  } else {
+    knapper.push(h("button", { class: "btn btn--primary", onclick: (e) => godkend(v, e.currentTarget) }, "Godkend"));
+  }
+  if (v.status !== "afvist") knapper.push(h("button", { class: "btn", onclick: (e) => afvis(v, e.currentTarget) }, "Afvis"));
+  knapper.push(h("button", { class: "btn btn--link", onclick: (e) => slet(v, e.currentTarget) }, "Slet ansøgningen"));
+
+  const kunde = adminLink("customers", v.shopify_customer_id);
+  $("ans-detalje").replaceChildren(
+    h("div", {}, h("button", { class: "btn tilbage", onclick: () => lukDetalje("ans-liste-visning", "ans-detalje") }, "← Alle ansøgninger")),
+    h("div", { class: "stack stack--s" },
+      h("div", { class: "row" }, maerke(v.status), v.nyhedsbrev ? h("span", { class: "maerke maerke--afvist" }, "Vil have nyhedsbrev") : null),
+      h("h1", {}, v.firmanavn),
+      h("p", { class: "mono muted" }, "CVR " + v.cvr)),
+    h("div", { class: "kort stack" },
+      h("div", { class: "felter" },
+        felt("Kontaktperson", v.kontaktperson),
+        felt("E-mail", v.email ? h("a", { href: "mailto:" + v.email }, v.email) : null),
+        felt("Telefon", v.telefon ? h("a", { href: "tel:" + v.telefon }, v.telefon) : null),
+        felt("Leveringsadresse", [v.leveringsadresse, [v.postnr, v.by].filter(Boolean).join(" ")].filter(Boolean).join(", ")),
+        felt("Kopper om dagen", KOPPER[v.kopper_pr_dag] || v.kopper_pr_dag),
+        felt("Kaffemaskine", v.maskine),
+        felt("Oprettet", dato(v.oprettet || v.created_date)),
+        v.godkendt_dato ? felt("Godkendt", dato(v.godkendt_dato)) : null),
+      kunde ? h("p", {}, h("a", { href: kunde, target: "_top" }, "Åbn kunden i Shopify →")) : null),
+    h("div", { class: "kort stack" },
+      h("h2", {}, v.status === "godkendt" ? "Kundens rabat" : "Hvilken rabat skal de have?"),
+      h("p", { class: "muted small" }, "Kunden ser kun sin egen rabat, ikke de andre."),
+      rabatValg,
+      v.status === "afvist" ? h("p", { class: "muted small" }, "Ansøgningen er afvist. Du kan stadig godkende den, hvis I har talt sammen.") : null,
+      h("div", { class: "handlinger" }, knapper)),
+  );
+  $("ans-liste-visning").hidden = true;
+  $("ans-detalje").hidden = false;
+  window.scrollTo(0, 0);
 }
 
-function mailBesked(mail) {
-  return mail && mail.sendt ? "Mail sendt" : "Mailen kunne ikke sendes" + (mail && mail.fejl ? " (" + mail.fejl + ")" : "");
+const mailTekst = (mail) => (mail && mail.sendt ? " Kunden har fået en mail." : " Mailen kunne ikke sendes — giv kunden besked selv.");
+
+async function godkend(v, knap) {
+  const valgt = document.querySelector('input[name="rabat"]:checked');
+  const niveau = Number(valgt ? valgt.value : 2);
+  await travl(knap, async () => {
+    try {
+      const res = await api("godkend", { id: v.id, prisniveau: niveau });
+      besked(v.firmanavn + " har nu " + satser[niveau] + " % rabat." + (v.status === "godkendt" ? "" : mailTekst(res.mail)), !(res.mail && res.mail.sendt) && v.status !== "godkendt");
+      lukDetalje("ans-liste-visning", "ans-detalje");
+      await hentAnsoegninger();
+    } catch (e) {
+      besked("Kunne ikke godkende: " + e.message, true);
+    }
+  });
 }
 
-async function godkend() {
-  if (!valgt) return;
-  const valg = $("prisniveau");
-  const niveau = Number((valg && valg.values && valg.values[0]) || (valg && valg.value) || 1);
-  const btn = $("approve");
-  btn.setAttribute("loading", "");
+async function afvis(v, knap) {
+  const ok = await bekraeft({ titel: "Afvis " + v.firmanavn + "?", tekst: "Virksomheden får en kort mail om, at de ikke kan blive erhvervskunde lige nu.", ja: "Afvis" });
+  if (!ok) return;
+  await travl(knap, async () => {
+    try {
+      const res = await api("afvis", { id: v.id });
+      besked(v.firmanavn + " er afvist." + mailTekst(res.mail), !(res.mail && res.mail.sendt));
+      lukDetalje("ans-liste-visning", "ans-detalje");
+      await hentAnsoegninger();
+    } catch (e) {
+      besked("Kunne ikke afvise: " + e.message, true);
+    }
+  });
+}
+
+async function slet(v, knap) {
+  const ok = await bekraeft({ titel: "Slet ansøgningen?", tekst: "Ansøgningen fra " + v.firmanavn + " slettes. Kunden bliver i Shopify, men mister sin erhvervsrabat. Der sendes ingen mail.", ja: "Slet" });
+  if (!ok) return;
+  await travl(knap, async () => {
+    try {
+      await api("slet", { id: v.id });
+      besked("Ansøgningen fra " + v.firmanavn + " er slettet.");
+      lukDetalje("ans-liste-visning", "ans-detalje");
+      await hentAnsoegninger();
+    } catch (e) {
+      besked("Kunne ikke slette: " + e.message, true);
+    }
+  });
+}
+
+// ------------------------------------------------------------------ Aftaler
+
+let aftaleListe = [];
+
+function talBoks(label, vaerdi) {
+  return h("div", { class: "kort stack stack--s" }, h("span", { class: "label" }, label), h("span", { class: "tal" }, vaerdi));
+}
+
+const varerTekst = (linjer) => linjer.map((l) => l.antal + " × " + l.kaffe + (l.variant ? " (" + l.variant + ")" : "")).join(", ");
+
+function aftaleLinje(a) {
+  return h("article", { class: "linje" + (a.status === "fejlet" ? " linje--fejlet" : "") },
+    h("div", { class: "linje__hoved" },
+      h("h3", {}, a.kunde),
+      h("span", { class: "small muted" }, varerTekst(a.linjer))),
+    h("div", { class: "linje__info small" },
+      h("span", { class: "label" }, a.status === "fejlet" ? "Skulle trækkes" : "Næste trækning"),
+      h("span", {}, langDato(a.naeste))),
+    h("div", { class: "linje__info small" },
+      h("span", { class: "label" }, a.rytme || "Fast levering"),
+      h("span", { class: "mono" }, kr(a.beloeb, a.valuta))),
+    maerke(a.status),
+    h("div", { class: "linje__handling" }, h("button", { class: "btn" + (a.status === "fejlet" ? " btn--primary" : ""), onclick: () => visAftale(a.id) }, "Se aftale")));
+}
+
+async function hentAftaler() {
+  $("aft-fejl").hidden = true;
   try {
-    const res = await api("godkend", { id: valgt.id, prisniveau: niveau });
-    $("detail").hideOverlay();
-    toast(valgt.firmanavn + " er godkendt på niveau " + niveau + ". " + mailBesked(res.mail), !(res.mail && res.mail.sendt));
-    await load();
+    const res = await api("aftaler");
+    aftaleListe = res.aftaler;
+    const fejlede = aftaleListe.filter((a) => a.status === "fejlet").length;
+    const pr30 = aftaleListe.filter((a) => a.status === "aktiv").reduce((sum, a) => sum + a.beloeb, 0);
+    saetTal("tal-aftaler", fejlede);
+    $("aft-tal").replaceChildren(
+      talBoks("Aktive aftaler", aftaleListe.filter((a) => a.status === "aktiv").length),
+      talBoks("Fejlede trækninger", fejlede),
+      talBoks("Pr. levering i alt", kr(pr30)));
+    $("aft-liste").replaceChildren(...(aftaleListe.length
+      ? aftaleListe.map(aftaleLinje)
+      : [h("p", { class: "tom" }, "Ingen faste leveringer endnu. De kommer her, når en erhvervskunde vælger fast levering i portalen.")]));
   } catch (e) {
-    toast("Kunne ikke godkende: " + e.message, true);
-  } finally {
-    btn.removeAttribute("loading");
+    $("aft-liste").replaceChildren();
+    visFejl("aft-fejl", e);
   }
 }
 
-async function afvis() {
-  if (!valgt) return;
-  if (!window.confirm("Afvis " + valgt.firmanavn + "? Virksomheden får en kort mail.")) return;
-  const btn = $("reject");
-  btn.setAttribute("loading", "");
-  try {
-    const res = await api("afvis", { id: valgt.id });
-    $("detail").hideOverlay();
-    toast(valgt.firmanavn + " er afvist. " + mailBesked(res.mail), !(res.mail && res.mail.sendt));
-    await load();
-  } catch (e) {
-    toast("Kunne ikke afvise: " + e.message, true);
-  } finally {
-    btn.removeAttribute("loading");
-  }
-}
-
-async function sletAnsoegning() {
-  if (!valgt) return;
-  if (!window.confirm("Slet ansøgningen fra " + valgt.firmanavn + "? Kunden bliver i Shopify, men mister erhvervsaftalen. Der sendes ingen mail.")) return;
-  const btn = $("delete");
-  btn.setAttribute("loading", "");
-  try {
-    await api("slet", { id: valgt.id });
-    $("detail").hideOverlay();
-    toast(valgt.firmanavn + " er slettet");
-    await load();
-  } catch (e) {
-    toast("Kunne ikke slette: " + e.message, true);
-  } finally {
-    btn.removeAttribute("loading");
-  }
-}
-
-// ------------------------------------------------------------------ Indstillinger
-
-function visRabat(res) {
-  const r = res.rabat;
-  $("discount-status").textContent = r
-    ? "Den automatiske rabat «" + (r.titel || "Erhvervspriser") + "» er " + (r.status === "ACTIVE" ? "aktiv" : String(r.status || "").toLowerCase()) + "."
-    : res.gemt
-      ? "Rabatten findes ikke i Shopify. Tryk Gem for at oprette den igen."
-      : "Rabatten oprettes i Shopify, første gang du trykker Gem.";
-}
-
-async function loadSatser() {
-  try {
-    const res = await api("satser");
-    for (const n of [1, 2, 3]) $("niveau-" + n).value = String(res.satser[n]);
-    visRabat(res);
-  } catch (e) {
-    $("discount-status").textContent = "Kunne ikke hente: " + e.message;
-  }
-}
-
-async function gemSatser() {
-  const btn = $("save");
-  btn.setAttribute("loading", "");
-  $("settings-error").hidden = true;
-  try {
-    const nye = {};
-    for (const n of [1, 2, 3]) nye[n] = Number($("niveau-" + n).value);
-    const res = await api("gem-satser", { satser: nye });
-    visRabat(res);
-    toast("Prisniveauerne er gemt");
-  } catch (e) {
-    $("settings-error-text").textContent = e.message;
-    $("settings-error").hidden = false;
-  } finally {
-    btn.removeAttribute("loading");
-  }
+function visAftale(id) {
+  const a = aftaleListe.find((x) => x.id === id);
+  if (!a) return;
+  $("aft-detalje").replaceChildren(
+    h("div", {}, h("button", { class: "btn tilbage", onclick: () => lukDetalje("aft-liste-visning", "aft-detalje") }, "← Alle aftaler")),
+    h("div", { class: "stack stack--s" },
+      h("div", { class: "row" }, maerke(a.status)),
+      h("h1", {}, a.kunde),
+      h("p", { class: "muted" }, a.kontakt + (a.email ? " · " + a.email : ""))),
+    a.note ? h("div", { class: "besked " + (a.status === "fejlet" ? "besked--fejl" : "besked--info") }, a.note) : null,
+    h("div", { class: "kort stack" },
+      h("div", { class: "felter" },
+        felt(a.status === "fejlet" ? "Skulle trækkes" : "Næste trækning", langDato(a.naeste)),
+        felt("Beløb pr. levering", kr(a.beloeb, a.valuta)),
+        felt("Rytme", a.rytme),
+        felt("Kort", a.kort && a.kort.sidste4 ? (a.kort.type ? a.kort.type + " " : "") + "•••• " + a.kort.sidste4 : null),
+        felt("Kunde siden", dato(a.start)),
+        felt("Leveringer indtil nu", a.antalOrdrer)),
+      h("div", { class: "stack stack--s" },
+        h("span", { class: "label" }, "Varer"),
+        h("ul", { class: "small" }, a.linjer.map((l) => h("li", {}, l.antal + " × " + l.kaffe + (l.variant ? " · " + l.variant : "")))))),
+    h("div", { class: "handlinger" },
+      h("a", { class: "btn btn--harbor", href: adminLink("orders", a.senesteOrdre.id), target: "_top" }, "Seneste ordre " + a.senesteOrdre.navn),
+      h("a", { class: "btn", href: adminLink("customers", a.kundeId), target: "_top" }, "Åbn kunden")),
+    h("p", { class: "muted small" }, "Ændringer, pause og opsigelse klarer kunden selv under «Abonnementer» på sin konto. Du kan også gøre det i appen Shopify Subscriptions."),
+  );
+  $("aft-liste-visning").hidden = true;
+  $("aft-detalje").hidden = false;
+  window.scrollTo(0, 0);
 }
 
 // ------------------------------------------------------------------ Risteplan
 
 let planUger = 0;
+const TYPE = { fast: "Fast levering", enkelt: "Enkeltkøb" };
 
-const kg = (n) => (Math.round(n * 10) / 10).toLocaleString("da-DK") + " kg";
-const kortDato = (iso) => new Date(iso).toLocaleDateString("da-DK", { weekday: "short", day: "numeric", month: "short", timeZone: "Europe/Copenhagen" });
-const TYPE = { fast: { tekst: "Fast levering", tone: "info" }, enkelt: { tekst: "Enkeltkøb", tone: "neutral" } };
-
-function tomRaekke(tekst) {
-  return h("s-table-row", {}, h("s-table-cell", {}, tekst));
+function tabel(id, overskrifter, raekker, tomTekst) {
+  const hoved = h("thead", {}, h("tr", {}, overskrifter.map(([t, tal]) => h("th", tal ? { class: "tal-celle" } : {}, t))));
+  const krop = h("tbody", {}, raekker.length ? raekker : h("tr", {}, h("td", { colspan: overskrifter.length, class: "muted" }, tomTekst)));
+  $(id).replaceChildren(hoved, krop);
 }
 
-async function loadPlan() {
-  for (const id of ["plan-ialt", "plan-ventende", "plan-forventede"]) $(id).setAttribute("loading", "");
-  $("plan-error").hidden = true;
-  $("uge-titel").textContent = planUger === 0 ? "Denne uge" : planUger === 1 ? "Næste uge" : planUger === -1 ? "Sidste uge" : (planUger > 0 ? "Om " + planUger + " uger" : planUger + " uger");
+async function hentPlan() {
+  $("plan-fejl").hidden = true;
+  $("uge-titel").textContent = planUger === 0 ? "Denne uge" : planUger === 1 ? "Næste uge" : planUger === -1 ? "Sidste uge" : planUger > 0 ? "Om " + planUger + " uger" : -planUger + " uger siden";
   try {
     const p = await api("risteplan", { uger: planUger });
     const slut = new Date(new Date(p.til).getTime() - 1);
     $("uge-dato").textContent = kortDato(p.fra) + " – " + kortDato(slut.toISOString());
 
-    $("plan-ialt-rows").replaceChildren(...(p.ialt.length
-      ? p.ialt.map((r) => h("s-table-row", {},
-        h("s-table-cell", {}, h("s-stack", { gap: "small-500" },
-          h("s-text", { type: "strong" }, r.kaffe),
-          r.ukendt ? h("s-text", { tone: "caution" }, r.ukendt + " stk. uden vægt i variantnavnet") : null)),
-        h("s-table-cell", {}, h("s-text", { type: "strong" }, kg(r.kg))),
-        h("s-table-cell", {}, kg(r.ventendeKg)),
-        h("s-table-cell", {}, kg(r.forventetKg))))
-      : [tomRaekke("Intet at riste i ugen")]));
+    tabel("plan-ialt", [["Kaffe"], ["I alt", true], ["Bestilt", true], ["Fast levering", true]],
+      p.ialt.map((r) => h("tr", {},
+        h("td", {}, h("strong", {}, r.kaffe), r.ukendt ? h("div", { class: "small muted" }, r.ukendt + " stk. uden vægt i navnet") : null),
+        h("td", { class: "tal-celle" }, h("strong", {}, kg(r.kg))),
+        h("td", { class: "tal-celle" }, kg(r.ventendeKg)),
+        h("td", { class: "tal-celle" }, kg(r.forventetKg)))),
+      "Intet at riste i ugen.");
 
-    $("plan-ventende-rows").replaceChildren(...(p.ventende.length
-      ? p.ventende.map((x) => h("s-table-row", {},
-        h("s-table-cell", {}, h("s-text", { type: "strong" }, x.kunde)),
-        h("s-table-cell", {}, x.kaffe + " · " + x.antal + " × " + x.variant),
-        h("s-table-cell", {}, x.kg ? kg(x.kg) : "–"),
-        h("s-table-cell", {}, h("s-stack", { gap: "small-500" }, h("s-text", {}, x.ordre), h("s-text", { color: "subdued" }, kortDato(x.dato)))),
-        h("s-table-cell", {}, h("s-badge", { tone: (TYPE[x.type] || TYPE.enkelt).tone }, (TYPE[x.type] || TYPE.enkelt).tekst))))
-      : [tomRaekke("Ingen ordrer venter")]));
+    tabel("plan-ventende", [["Kunde"], ["Kaffe"], ["Kg", true], ["Ordre"], ["Type"]],
+      p.ventende.map((x) => h("tr", {},
+        h("td", {}, h("strong", {}, x.kunde)),
+        h("td", {}, x.antal + " × " + x.kaffe + " · " + x.variant),
+        h("td", { class: "tal-celle" }, x.kg ? kg(x.kg) : "–"),
+        h("td", {}, x.ordre, h("div", { class: "small muted" }, kortDato(x.dato))),
+        h("td", {}, TYPE[x.type] || TYPE.enkelt))),
+      "Ingen ordrer venter.");
 
-    $("plan-forventede-rows").replaceChildren(...(p.forventede.length
-      ? p.forventede.map((x) => h("s-table-row", {},
-        h("s-table-cell", {}, h("s-text", { type: "strong" }, x.kunde)),
-        h("s-table-cell", {}, x.kaffe + " · " + x.antal + " × " + x.variant),
-        h("s-table-cell", {}, x.kg ? kg(x.kg) : "–"),
-        h("s-table-cell", {}, kortDato(x.dato)),
-        h("s-table-cell", {}, x.rytme || "–")))
-      : [tomRaekke("Ingen faste leveringer i ugen")]));
+    tabel("plan-forventede", [["Kunde"], ["Kaffe"], ["Kg", true], ["Dag"], ["Rytme"]],
+      p.forventede.map((x) => h("tr", {},
+        h("td", {}, h("strong", {}, x.kunde)),
+        h("td", {}, x.antal + " × " + x.kaffe + " · " + x.variant),
+        h("td", { class: "tal-celle" }, x.kg ? kg(x.kg) : "–"),
+        h("td", {}, kortDato(x.dato)),
+        h("td", {}, x.rytme || "–"))),
+      "Ingen faste leveringer i ugen.");
   } catch (e) {
-    $("plan-error-text").textContent = e.message;
-    $("plan-error").hidden = false;
-  } finally {
-    for (const id of ["plan-ialt", "plan-ventende", "plan-forventede"]) $(id).removeAttribute("loading");
+    visFejl("plan-fejl", e);
   }
+}
+
+// ------------------------------------------------------------------ Indstillinger
+
+function visRabatStatus(res) {
+  const r = res.rabat;
+  $("rabat-status").textContent = r
+    ? r.status === "ACTIVE" ? "✓ Rabatten er slået til i Shopify." : "Rabatten findes i Shopify, men er ikke slået til."
+    : res.gemt
+      ? "Rabatten mangler i Shopify. Tryk Gem rabatter for at lave den igen."
+      : "Tryk Gem rabatter for at slå rabatten til i Shopify.";
+}
+
+async function hentSatser() {
+  try {
+    const res = await api("satser");
+    satser = res.satser;
+    for (const n of [1, 2, 3]) $("sats-" + n).value = String(res.satser[n]);
+    visRabatStatus(res);
+  } catch (e) {
+    visFejl("ind-fejl", e);
+  }
+}
+
+async function gemSatser(e) {
+  $("ind-fejl").hidden = true;
+  await travl(e.currentTarget, async () => {
+    try {
+      const nye = {};
+      for (const n of [1, 2, 3]) nye[n] = Number($("sats-" + n).value);
+      const res = await api("gem-satser", { satser: nye });
+      satser = res.satser;
+      visRabatStatus(res);
+      besked("Rabatterne er gemt");
+    } catch (err) {
+      visFejl("ind-fejl", err);
+    }
+  });
 }
 
 // ------------------------------------------------------------------ Start
 
-if (side === "risteplan") {
-  $("side-risteplan").hidden = false;
-  $("uge-forrige").addEventListener("click", () => { planUger = Math.max(-4, planUger - 1); loadPlan(); });
-  $("uge-naeste").addEventListener("click", () => { planUger = Math.min(8, planUger + 1); loadPlan(); });
-  $("print").addEventListener("click", () => window.print());
-  loadPlan();
-} else if (side === "indstillinger") {
-  $("side-indstillinger").hidden = false;
-  $("save").addEventListener("click", gemSatser);
-  loadSatser();
-} else {
-  $("side-ansoegninger").hidden = false;
-  $("refresh").addEventListener("click", load);
-  $("search").addEventListener("input", renderRows);
-  $("status").addEventListener("change", renderRows);
-  $("approve").addEventListener("click", godkend);
-  $("reject").addEventListener("click", afvis);
-  $("delete").addEventListener("click", sletAnsoegning);
-  load();
+for (const a of document.querySelectorAll(".tab")) {
+  a.addEventListener("click", (e) => {
+    e.preventDefault();
+    visFane(a.dataset.fane, { push: true });
+  });
 }
+window.addEventListener("popstate", () => visFane(STIER[location.pathname] || "ansoegninger"));
+
+$("soeg").addEventListener("input", visAnsoegningsListe);
+$("filter").addEventListener("change", visAnsoegningsListe);
+$("uge-forrige").addEventListener("click", () => { planUger = Math.max(-4, planUger - 1); hentPlan(); });
+$("uge-naeste").addEventListener("click", () => { planUger = Math.min(8, planUger + 1); hentPlan(); });
+$("print").addEventListener("click", () => window.print());
+$("gem").addEventListener("click", gemSatser);
+
+visFane(STIER[location.pathname] || document.body.dataset.side);
+// Tallene på fanerne skal vises, uanset hvilken fane ejeren starter på.
+if (!indlaest.has("ansoegninger")) { indlaest.add("ansoegninger"); hentAnsoegninger(); }
+if (!indlaest.has("aftaler")) { indlaest.add("aftaler"); hentAftaler(); hentPlan(); }

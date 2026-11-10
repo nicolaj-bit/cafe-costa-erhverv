@@ -11,7 +11,9 @@ Bygget som Lalatotos forudbestillings-app: **Base44 er serveren**, og appen
 
 | Del | Hvor | Hvad |
 | --- | --- | --- |
-| Ejerens side i admin | Base44 `/api/admin` og `/api/admin-indstillinger` | Polaris-side med ansøgninger, Godkend/Afvis og prisniveauer |
+| Ejerens side i admin | Base44 `/api/admin` (fanerne Ansøgninger, Aftaler, Indstillinger) | Café Costas look: temaets `--costa`-variabler og skrifter (`/api/admin-skrift`). App Bridge giver menu, titellinje, beskeder og bekræftelser |
+| Aftaler | Fanen Aftaler | Faste leveringer regnet ud fra ordrer med tagget `Subscription` — appen har ingen adgang til abonnementerne. Fejlet trækning = næste ordre er mere end et døgn forsinket |
+| Min aftale | Portalen → `GET /apps/erhverv` → Base44 `/api/erhverv-proxy` | Kundens egne faste leveringer, med app proxy-signaturen og `logged_in_customer_id` |
 | Data til ejerens side | Base44 `/api/admin-data` | Kræver App Bridges ID token (signeret med appens client secret) |
 | Ansøgningsformularen | Temablok «Erhvervsansøgning» → `/apps/erhverv` → Base44 `/api/erhverv-proxy` | App proxy. Shopify signerer kaldet; Base44 tjekker signaturen |
 | Portalen | Temablok «Erhvervsportal» på `/pages/erhverv` | Ren Liquid ud fra kundens tags |

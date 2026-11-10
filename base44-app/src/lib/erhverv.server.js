@@ -418,6 +418,132 @@ export async function risteplan(env, uger = 0) {
   return { fra: fra.toISOString(), til: til.toISOString(), ventende, forventede, ialt };
 }
 
+// ---------------------------------------------------------------- Aftaler (fast levering)
+
+const ABONNEMENTS_ORDRER = `query($q: String!, $after: String) {
+  orders(first: 50, after: $after, query: $q, sortKey: CREATED_AT, reverse: true) {
+    pageInfo { hasNextPage endCursor }
+    nodes {
+      id legacyResourceId name createdAt cancelledAt
+      totalPriceSet { shopMoney { amount currencyCode } }
+      customer { id legacyResourceId displayName defaultEmailAddress { emailAddress } tags firma: metafield(namespace: "erhverv", key: "firmanavn") { value } }
+      transactions(first: 5) { kind status paymentDetails { ... on CardPaymentDetails { number company } } }
+      lineItems(first: 50) { nodes { title variantTitle quantity sellingPlan { name sellingPlanId } variant { id } } }
+    }
+  }
+}`;
+
+async function hentAbonnementsOrdrer(env, q) {
+  const alle = [];
+  let after = null;
+  for (let side = 0; side < 10; side++) {
+    const data = await adminGraphql(env, ABONNEMENTS_ORDRER, { q, after });
+    alle.push(...data.orders.nodes);
+    if (!data.orders.pageInfo.hasNextPage) break;
+    after = data.orders.pageInfo.endCursor;
+  }
+  return alle;
+}
+
+async function hentRytmer(env, planIds) {
+  const rytmer = new Map();
+  if (!planIds.length) return rytmer;
+  const data = await adminGraphql(
+    env,
+    `query($ids: [ID!]!) { nodes(ids: $ids) { ... on SellingPlan { id name deliveryPolicy { ... on SellingPlanRecurringDeliveryPolicy { interval intervalCount } } } } }`,
+    { ids: planIds },
+  );
+  for (const n of data.nodes) if (n?.deliveryPolicy?.interval) rytmer.set(n.id, n.deliveryPolicy);
+  return rytmer;
+}
+
+/** «•••• 4242» ud fra ordrens betaling, hvis Shopify har kortet. */
+function kortCifre(o) {
+  for (const t of o.transactions ?? []) {
+    const nr = t.paymentDetails?.number;
+    if (nr) return { sidste4: String(nr).replace(/\D/g, "").slice(-4) || null, type: t.paymentDetails.company ?? null };
+  }
+  return null;
+}
+
+// Shopify Subscriptions prøver en fejlet trækning igen 3 gange over 7 dage
+// (sat op i Shopify Subscriptions). Kommer der ikke en ny ordre til tiden,
+// regner vi trækningen for fejlet.
+const GENFORSOEG_DAGE = 7;
+
+/**
+ * Faste leveringer, regnet ud fra ordrer med Shopify Subscriptions' tag
+ * «Subscription». Appen har bevidst ikke adgang til selve abonnementerne, så
+ * næste trækning = seneste ordre + rytmen. En trækning, der er mere end et
+ * døgn forsinket, vises som fejlet.
+ */
+export async function aftaler(env, { kundeId = null } = {}) {
+  const historik = new Date(Date.now() - 400 * DAG).toISOString().slice(0, 10);
+  const q = `tag:Subscription created_at:>=${historik}` + (kundeId ? ` customer_id:${String(kundeId).split("/").pop()}` : "");
+  const ordrer = (await hentAbonnementsOrdrer(env, q)).filter((o) => !o.cancelledAt && o.customer);
+
+  // Nyeste ordre pr. kunde og rytme (ordrerne kommer nyeste først).
+  const grupper = new Map();
+  for (const o of ordrer) {
+    const planer = new Map();
+    for (const l of o.lineItems.nodes) if (l.sellingPlan) planer.set(l.sellingPlan.sellingPlanId, l.sellingPlan.name);
+    for (const [planId, planNavn] of planer) {
+      const noegle = `${o.customer.id}|${planId}`;
+      const g = grupper.get(noegle);
+      if (!g) grupper.set(noegle, { o, planId, planNavn, antalOrdrer: 1, start: o.createdAt });
+      else {
+        g.antalOrdrer += 1;
+        g.start = o.createdAt;
+      }
+    }
+  }
+
+  const rytmer = await hentRytmer(env, [...new Set([...grupper.values()].map((g) => g.planId))]);
+  const nu = Date.now();
+  const liste = [];
+  for (const g of grupper.values()) {
+    const { o } = g;
+    const rytme = rytmer.get(g.planId);
+    const naeste = rytme ? plusInterval(o.createdAt, rytme.interval, rytme.intervalCount) : null;
+    const forsinket = naeste ? (nu - naeste.getTime()) / DAG : 0;
+    let status = "aktiv";
+    let note = null;
+    if (forsinket > 1) {
+      status = "fejlet";
+      note = forsinket <= GENFORSOEG_DAGE + 1
+        ? `Trækningen ${dkDato(naeste)} gik ikke igennem. Shopify prøver igen i op til ${GENFORSOEG_DAGE} dage og har mailet kunden om at opdatere kortet.`
+        : `Ingen trækning siden ${dkDato(naeste)}. Kortet er måske ikke opdateret, eller aftalen er sat på pause eller opsagt.`;
+    }
+    const linjer = o.lineItems.nodes
+      .filter((l) => l.sellingPlan?.sellingPlanId === g.planId)
+      .map((l) => ({ kaffe: l.title, variant: l.variantTitle, antal: l.quantity }));
+    liste.push({
+      id: `${o.customer.legacyResourceId}-${g.planId.split("/").pop()}`,
+      kunde: o.customer.firma?.value || o.customer.displayName,
+      kontakt: o.customer.displayName,
+      email: o.customer.defaultEmailAddress?.emailAddress ?? null,
+      erhverv: (o.customer.tags ?? []).includes(TAG.godkendt),
+      kundeId: o.customer.legacyResourceId,
+      rytme: g.planNavn,
+      naeste: naeste ? naeste.toISOString() : null,
+      seneste: o.createdAt,
+      start: g.start,
+      antalOrdrer: g.antalOrdrer,
+      beloeb: Number(o.totalPriceSet.shopMoney.amount),
+      valuta: o.totalPriceSet.shopMoney.currencyCode,
+      senesteOrdre: { navn: o.name, id: o.legacyResourceId },
+      kort: kortCifre(o),
+      linjer,
+      status,
+      note,
+    });
+  }
+  liste.sort((a, b) => (a.status === b.status ? String(a.naeste).localeCompare(String(b.naeste)) : a.status === "fejlet" ? -1 : 1));
+  return { aftaler: liste, genforsoegDage: GENFORSOEG_DAGE };
+}
+
+const dkDato = (d) => new Date(d).toLocaleDateString("da-DK", { day: "numeric", month: "long", timeZone: "Europe/Copenhagen" });
+
 // ---------------------------------------------------------------- Rabatsatser
 
 /**
