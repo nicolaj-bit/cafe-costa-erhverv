@@ -81,7 +81,8 @@
   document.addEventListener('change', (e) => {
     const valg = e.target.closest('[data-erhverv-variant]');
     if (!valg) return;
-    const opt = valg.selectedOptions[0];
+    // Kassestørrelsen vælges med pille-knapper (radio) eller en liste.
+    const opt = valg.tagName === 'SELECT' ? valg.selectedOptions[0] : valg;
     const form = valg.closest('form');
     const pris = form.querySelector('[data-erhverv-pris]');
     const liste = form.querySelector('[data-erhverv-liste]');

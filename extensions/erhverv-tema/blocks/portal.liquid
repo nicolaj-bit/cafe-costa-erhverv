@@ -66,7 +66,11 @@
               <p class="costa-label">Erhvervskunde</p>
               <h2 class="erhverv__subtitle">Log ind</h2>
               <p>Log ind med den e-mail, I ansøgte med, for at se jeres aftale og bestille til erhvervspris.</p>
-              <a class="costa-button costa-button--primary" href="{{ routes.account_login_url }}">Log ind</a>
+              {%- comment -%}
+                storefront_login_url sender kunden tilbage til portalen efter
+                login. account_login_url ender på kontosiden.
+              {%- endcomment -%}
+              <a class="costa-button costa-button--primary" href="{{ routes.storefront_login_url }}">Log ind</a>
             </div>
           {%- else -%}
             <div class="costa-card erhverv-card">
@@ -162,41 +166,86 @@
             <p class="costa-form__status">Vælg erhvervskollektionen i temaredigeringen under blokken «Erhvervsportal».</p>
           {%- else -%}
             <p class="costa-muted erhverv-note">Priserne er vist med jeres rabat på {{ sats }} %. Fragt lægges til i kassen. Bestillingen går gennem den almindelige kasse.</p>
-            <ul class="erhverv-products" role="list">
+            {%- comment -%}
+              Samme kaffeposer som i webshoppen: temaets costa-bag-klasser.
+              Prisen er erhvervsprisen; listeprisen står streget over.
+            {%- endcomment -%}
+            <ul class="costa-shop__grid erhverv-shop" role="list" style="--costa-shop-columns: 3;">
               {%- for product in kol.products limit: 24 -%}
-                {%- assign v0 = product.selected_or_first_available_variant -%}
-                <li class="erhverv-product">
-                  <div class="erhverv-product__media">
-                    {%- if product.featured_image -%}
-                      {{ product.featured_image | image_url: width: 240 | image_tag: loading: 'lazy', alt: product.title, widths: '120, 240' }}
-                    {%- endif -%}
-                  </div>
-                  <div class="erhverv-product__info">
-                    <h3 class="erhverv-product__title"><a href="{{ product.url }}">{{ product.title | escape }}</a></h3>
-                    {%- if product.metafields.custom.smagsnoter.value != blank -%}<p class="costa-muted">{{ product.metafields.custom.smagsnoter.value | escape }}</p>{%- endif -%}
-                  </div>
-                  {%- form 'product', product, class: 'erhverv-product__form' -%}
-                    {%- if product.has_only_default_variant -%}
-                      <input type="hidden" name="id" value="{{ v0.id }}">
+                {%- liquid
+                  assign v0 = product.selected_or_first_available_variant
+                  assign pris0 = v0.price | times: faktor | divided_by: 100
+                  assign ristning = product.metafields.custom.ristning.value
+                  assign r = ristning | downcase
+                  assign tone = 'medium'
+                  assign level = 3
+                  if r contains 'lys' or r contains 'light'
+                    assign tone = 'light'
+                    assign level = 1
+                  elsif r contains 'mørk' or r contains 'dark'
+                    assign tone = 'dark'
+                    assign level = 5
+                  elsif r == blank
+                    assign level = 0
+                  endif
+                -%}
+                <li class="costa-shop__item">
+                  <article class="costa-bag">
+                    <div class="costa-bag__seal" aria-hidden="true"></div>
+                    {%- if product.featured_media -%}
+                      <a class="costa-bag__media" href="{{ product.url }}" tabindex="-1" aria-hidden="true">
+                        {{ product.featured_media | image_url: width: 900 | image_tag: loading: 'lazy', widths: '300, 450, 600, 900', sizes: '(min-width: 990px) 30vw, (min-width: 600px) 45vw, 100vw', alt: product.featured_media.alt | default: product.title | escape }}
+                      </a>
                     {%- else -%}
-                      <label class="visually-hidden" for="Var-{{ block.id }}-{{ product.id }}">Kassestørrelse</label>
-                      <select id="Var-{{ block.id }}-{{ product.id }}" name="id" class="costa-select costa-select--small" data-erhverv-variant>
-                        {%- for variant in product.variants -%}
-                          {%- assign pris = variant.price | times: faktor | divided_by: 100 -%}
-                          <option value="{{ variant.id }}" data-pris="{{ pris | money }}" data-liste="{{ variant.price | money }}" {% if variant == v0 %}selected{% endif %} {% unless variant.available %}disabled{% endunless %}>{{ variant.title | escape }}</option>
-                        {%- endfor -%}
-                      </select>
+                      <a class="costa-bag__media costa-bag__media--empty costa-roast--{{ tone }}" href="{{ product.url }}" tabindex="-1" aria-hidden="true">
+                        <span class="costa-bag__front">
+                          <span class="costa-bag__brand">Café Costa</span>
+                          <span class="costa-bag__sub">Erhverv</span>
+                          {%- if level > 0 -%}
+                            <span class="costa-roast-meter">
+                              {%- for i in (1..5) -%}<span class="costa-roast-meter__dot{% if i <= level %} is-on{% endif %}"></span>{%- endfor -%}
+                            </span>
+                          {%- endif -%}
+                        </span>
+                      </a>
                     {%- endif -%}
-                    <p class="erhverv-price">
-                      {%- assign pris0 = v0.price | times: faktor | divided_by: 100 -%}
-                      <strong data-erhverv-pris>{{ pris0 | money }}</strong>
-                      {%- if sats > 0 -%}<s class="costa-muted" data-erhverv-liste>{{ v0.price | money }}</s>{%- endif -%}
-                    </p>
-                    <input type="number" name="quantity" value="1" min="1" class="erhverv-qty" aria-label="Antal af {{ product.title | escape }}">
-                    <button type="submit" class="costa-button costa-button--small costa-button--primary" {% unless product.available %}disabled{% endunless %}>
-                      {%- if product.available -%}Læg i kurv{%- else -%}Udsolgt{%- endif -%}
-                    </button>
-                  {%- endform -%}
+
+                    <div class="costa-bag__label">
+                      <div class="costa-bag__top">
+                        <span>{% if ristning != blank %}Ristning · {{ ristning | escape }}{% else %}{{ product.type | escape }}{% endif %}</span>
+                        {%- if sats > 0 -%}<span>Erhvervspris</span>{%- endif -%}
+                      </div>
+                      <h3 class="costa-bag__title"><a href="{{ product.url }}">{{ product.title | escape }}</a></h3>
+                      {%- if product.metafields.custom.smagsnoter.value != blank -%}<p class="costa-bag__notes">{{ product.metafields.custom.smagsnoter.value | escape }}</p>{%- endif -%}
+                    </div>
+
+                    {%- form 'product', product, class: 'costa-bag__form', novalidate: 'novalidate' -%}
+                      {%- if product.has_only_default_variant -%}
+                        <input type="hidden" name="id" value="{{ v0.id }}">
+                      {%- else -%}
+                        <fieldset class="costa-pills">
+                          <legend class="visually-hidden">Kassestørrelse</legend>
+                          {%- for variant in product.variants -%}
+                            {%- assign pris = variant.price | times: faktor | divided_by: 100 -%}
+                            <label class="costa-pill">
+                              <input type="radio" name="id" value="{{ variant.id }}" data-erhverv-variant data-pris="{{ pris | money }}" data-liste="{{ variant.price | money }}" {% if variant == v0 %}checked{% endif %} {% unless variant.available %}disabled{% endunless %}>
+                              <span>{{ variant.title | escape }}</span>
+                            </label>
+                          {%- endfor -%}
+                        </fieldset>
+                      {%- endif -%}
+                      <input type="hidden" name="quantity" value="1">
+                      <div class="costa-bag__buy">
+                        <span class="costa-price">
+                          {%- if sats > 0 -%}<s data-erhverv-liste>{{ v0.price | money }}</s> {% endif -%}
+                          <span data-erhverv-pris>{{ pris0 | money }}</span>
+                        </span>
+                        <button type="submit" class="costa-button costa-button--buy costa-button--small" {% unless product.available %}disabled{% endunless %}>
+                          {%- if product.available -%}Læg i kurv{%- else -%}Udsolgt{%- endif -%}
+                        </button>
+                      </div>
+                    {%- endform -%}
+                  </article>
                 </li>
               {%- endfor -%}
             </ul>
@@ -216,7 +265,10 @@
               {%- for order in customer.orders limit: 25 -%}
                 <div class="erhverv-table__row" role="row">
                   <span role="cell"><strong>{{ order.name }}</strong></span>
-                  <span role="cell">{{ order.created_at | date: '%-d. %b %Y' }}</span>
+                  {%- comment -%} Dansk månedsnavn: date-filteret giver engelsk. {%- endcomment -%}
+                  {%- assign md = order.created_at | date: '%m' | plus: 0 | minus: 1 -%}
+                  {%- assign maaneder = 'jan.,feb.,mar.,apr.,maj,jun.,jul.,aug.,sep.,okt.,nov.,dec.' | split: ',' -%}
+                  <span role="cell">{{ order.created_at | date: '%-d.' }} {{ maaneder[md] }} {{ order.created_at | date: '%Y' }}</span>
                   <span role="cell"><span class="erhverv-pill">{{ order.financial_status_label }}</span></span>
                   <span role="cell"><span class="erhverv-pill">{{ order.fulfillment_status_label }}</span></span>
                   <span role="cell">{{ order.total_price | money }}</span>
