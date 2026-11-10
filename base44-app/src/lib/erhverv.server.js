@@ -270,63 +270,6 @@ export async function slet(base44, env, id) {
   return { slettet: id };
 }
 
-// ---------------------------------------------------------------- Design på login og kasse
-
-// Temaets egne skrifter, kopieret til butikkens Filer (Indhold → Filer).
-// Id'erne gælder kun for Costas butik.
-const SKRIFT = {
-  instrument400: "gid://shopify/GenericFile/75107118252376",
-  instrument600: "gid://shopify/GenericFile/75107118285144",
-  bricolage800: "gid://shopify/GenericFile/75107118317912",
-};
-
-// Farverne fra costa-tokens.css.
-const FARVE = { papir: "#EFE8DC", kort: "#F7F2E9", tryk: "#1C1A17", roed: "#9A4421" };
-
-const COSTA_BRANDING = {
-  designTokens: {
-    typography: {
-      primary: { customFontGroup: { base: { genericFileId: SKRIFT.instrument400, weight: 400 }, bold: { genericFileId: SKRIFT.instrument600, weight: 600 } } },
-      secondary: { customFontGroup: { base: { genericFileId: SKRIFT.bricolage800, weight: 800 }, bold: { genericFileId: SKRIFT.bricolage800, weight: 800 } } },
-    },
-    cornerRadius: { small: 2, base: 4, large: 8 },
-  },
-  components: {
-    main: {
-      colors: {
-        base: { background: FARVE.papir, text: FARVE.tryk, accent: FARVE.roed, border: FARVE.tryk, icon: FARVE.tryk, decorative: FARVE.roed },
-        control: { background: FARVE.kort, text: FARVE.tryk, border: FARVE.tryk, accent: FARVE.roed, icon: FARVE.tryk },
-        primaryButton: {
-          background: FARVE.tryk, text: FARVE.papir, border: FARVE.tryk, accent: FARVE.papir, icon: FARVE.papir,
-          hover: { background: FARVE.roed, text: FARVE.kort, border: FARVE.roed },
-        },
-        secondaryButton: { background: FARVE.kort, text: FARVE.tryk, border: FARVE.tryk },
-      },
-    },
-    headingLevel1: { typography: { font: "SECONDARY" } },
-    headingLevel2: { typography: { font: "SECONDARY" } },
-    headingLevel3: { typography: { font: "SECONDARY" } },
-  },
-};
-
-/**
- * Lægger Costas farver, skrifter og hjørner på login-siden, kundekontoen og
- * kassen. Shopify tillader det kun på Plus og udviklingsbutikker.
- */
-export async function anvendDesign(env) {
-  const data = await adminGraphql(env, `{ checkoutAndAccountsConfigurations(first: 10) { nodes { id name isPublished } } }`);
-  const alle = data.checkoutAndAccountsConfigurations?.nodes ?? [];
-  const konfig = alle.find((k) => k.isPublished) ?? alle[0];
-  if (!konfig) throw new HttpError(404, "Butikken har ingen konfiguration af kasse og konti");
-  const res = await adminGraphql(
-    env,
-    `mutation($id: ID!, $c: CheckoutAndAccountsConfigurationInput!) { checkoutAndAccountsConfigurationUpdate(id: $id, configuration: $c) { configuration { id name } userErrors { field message } } }`,
-    { id: konfig.id, c: { branding: COSTA_BRANDING } },
-  );
-  assertNoUserErrors(res.checkoutAndAccountsConfigurationUpdate, "Shopify afviste designet");
-  return { konfiguration: konfig.name, publiceret: konfig.isPublished };
-}
-
 // ---------------------------------------------------------------- Rabatsatser
 
 /**
