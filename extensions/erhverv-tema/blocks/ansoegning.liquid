@@ -1,5 +1,5 @@
 {%- comment -%}
-  Erhvervsansøgning. Sendes til /apps/erhverv, som Shopify sender videre til
+  Opret erhvervsaftale. Sendes til /apps/erhverv, som Shopify sender videre til
   Base44 med en signatur. Base44 kontrollerer CVR-nummeret, opretter kunden
   med tagget erhverv-afventer og gemmer virksomheden.
   Nyhedsbrevet er aldrig krydset af på forhånd: samtykke skal være aktivt.
@@ -103,18 +103,18 @@
 
 {% schema %}
 {
-  "name": "Erhvervsansøgning",
+  "name": "Opret erhvervsaftale",
   "target": "section",
   "stylesheet": "erhverv.css",
   "javascript": "erhverv.js",
   "settings": [
     { "type": "text", "id": "label", "label": "Etiket", "default": "Bliv erhvervskunde" },
-    { "type": "text", "id": "heading", "label": "Overskrift", "default": "Ansøg om en erhvervsaftale" },
+    { "type": "text", "id": "heading", "label": "Overskrift", "default": "Opret en erhvervsaftale" },
     { "type": "richtext", "id": "intro", "label": "Tekst", "default": "<p>Udfyld formularen, så kontakter vi jer. Når aftalen er godkendt, kan I logge ind og bestille til erhvervspris.</p>" },
     { "type": "text", "id": "newsletter_text", "label": "Tekst ved nyhedsbrev", "default": "Ja tak, send os nyhedsbrevet med nye kaffer og tilbud. Vi kan altid afmelde det igen." },
-    { "type": "text", "id": "button", "label": "Knap", "default": "Send ansøgning" },
-    { "type": "richtext", "id": "privacy", "label": "Note under knappen", "default": "<p>Vi bruger oplysningerne til at behandle ansøgningen og levere til jer.</p>" },
-    { "type": "text", "id": "success_heading", "label": "Overskrift efter afsendelse", "default": "Ansøgningen er modtaget" },
+    { "type": "text", "id": "button", "label": "Knap", "default": "Opret erhvervsaftale" },
+    { "type": "richtext", "id": "privacy", "label": "Note under knappen", "default": "<p>Vi bruger oplysningerne til at oprette aftalen og levere til jer.</p>" },
+    { "type": "text", "id": "success_heading", "label": "Overskrift efter afsendelse", "default": "Tak — aftalen er oprettet" },
     { "type": "richtext", "id": "success_text", "label": "Tekst efter afsendelse", "default": "<p>Vi ser på den hurtigst muligt og skriver til jer, når aftalen er godkendt.</p>" }
   ]
 }

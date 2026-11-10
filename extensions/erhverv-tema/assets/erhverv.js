@@ -1,7 +1,7 @@
-// Erhvervsportalens adfærd i butikken: sender ansøgningen gennem app proxy,
+// Erhvervsportalens adfærd i butikken: sender formularen gennem app proxy,
 // skifter faner i portalen og viser erhvervsprisen for den valgte kassestørrelse.
 (() => {
-  // ------------------------------------------------ Ansøgning
+  // ------------------------------------------------ Opret erhvervsaftale
   for (const form of document.querySelectorAll('[data-erhverv-form]')) {
     if (form.dataset.ready) continue;
     form.dataset.ready = '1';
@@ -37,7 +37,7 @@
           body: new URLSearchParams(new FormData(form)),
         });
         const body = await res.json().catch(() => null);
-        if (!res.ok || !body?.ok) throw new Error(body?.fejl || 'Ansøgningen kunne ikke sendes. Prøv igen, eller ring til os.');
+        if (!res.ok || !body?.ok) throw new Error(body?.fejl || 'Aftalen kunne ikke oprettes. Prøv igen, eller ring til os.');
         form.hidden = true;
         done.hidden = false;
         done.focus();

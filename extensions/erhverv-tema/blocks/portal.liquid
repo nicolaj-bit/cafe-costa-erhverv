@@ -1,6 +1,6 @@
 {%- comment -%}
   Erhvervsportal på /pages/erhverv. Skærmen vælges ud fra kundens tags:
-    ikke logget ind        → log ind eller ansøg
+    ikke logget ind        → log ind eller opret en erhvervsaftale
     erhverv-afventer       → afventer godkendelse
     erhverv-afvist         → kort besked
     erhverv-godkendt       → Min aftale, Vælg varer, Ordrer og fakturaer
@@ -69,7 +69,7 @@
             <div class="costa-card erhverv-card">
               <p class="costa-label">Erhvervskunde</p>
               <h2 class="erhverv__subtitle">Log ind</h2>
-              <p>Log ind med den e-mail, I ansøgte med, for at se jeres aftale og bestille til erhvervspris.</p>
+              <p>Log ind med den e-mail, I oprettede aftalen med, for at se jeres aftale og bestille til erhvervspris.</p>
               {%- comment -%}
                 storefront_login_url sender kunden tilbage til portalen efter
                 login. account_login_url ender på kontosiden.
@@ -80,15 +80,15 @@
             <div class="costa-card erhverv-card">
               <p class="costa-label">Logget ind som</p>
               <h2 class="erhverv__subtitle">{{ customer.email | escape }}</h2>
-              <p>Kontoen har ingen erhvervsaftale endnu. Er I logget ind med en anden e-mail end den, I ansøgte med?</p>
+              <p>Kontoen har ingen erhvervsaftale endnu. Er I logget ind med en anden e-mail end den, I oprettede aftalen med?</p>
               <a class="costa-button" href="{{ routes.account_logout_url }}">Log ud</a>
             </div>
           {%- endif -%}
           <div class="costa-card erhverv-card erhverv-card--kraft">
             <p class="costa-label">Ny virksomhed</p>
-            <h2 class="erhverv__subtitle">Ansøg om en aftale</h2>
+            <h2 class="erhverv__subtitle">Opret en erhvervsaftale</h2>
             <p>Friskristet kaffe til kontoret, kantinen eller butikken — med fast erhvervspris og levering fra Kalundborg.</p>
-            <a class="costa-button" href="{{ ansoeg_url }}">Ansøg</a>
+            <a class="costa-button" href="{{ ansoeg_url }}">Opret aftale</a>
           </div>
         </div>
 
@@ -98,8 +98,8 @@
           <h1 class="erhverv__title">Afventer godkendelse</h1>
           <div class="costa-richtext">{{ block.settings.pending_text }}</div>
           <ol class="erhverv-steps" role="list">
-            <li class="is-done"><span>1</span>Ansøgning sendt</li>
-            <li class="is-current"><span>2</span>Vi ser på den</li>
+            <li class="is-done"><span>1</span>Aftale oprettet</li>
+            <li class="is-current"><span>2</span>Vi godkender den</li>
             <li><span>3</span>I kan bestille</li>
           </ol>
           <a class="costa-button" href="{{ routes.collections_url }}/all">Se kaffen imens</a>
@@ -120,7 +120,7 @@
             <h1 class="erhverv__title">{{ firmanavn | escape }}</h1>
           </div>
           {%- if niveau > 0 -%}
-            <p class="erhverv-level"><span class="costa-label">Prisniveau {{ niveau }}</span><strong>{{ sats }} %</strong><span class="costa-muted">rabat på kaffen</span></p>
+            <p class="erhverv-level"><span class="costa-label">Jeres rabat</span><strong>{{ sats }} %</strong><span class="costa-muted">trækkes fra ved kassen</span></p>
           {%- endif -%}
         </header>
 
@@ -145,9 +145,9 @@
               </dl>
             </div>
             <div class="costa-card erhverv-card">
-              <p class="costa-label">Prisniveau</p>
+              <p class="costa-label">Jeres rabat</p>
               <p class="erhverv-big">{{ sats }} %</p>
-              <p>Niveau {{ niveau }}. Rabatten trækkes automatisk fra i kurven, når I er logget ind.</p>
+              <p>Rabatten trækkes automatisk fra ved kassen, når I er logget ind.</p>
             </div>
             <div class="costa-card erhverv-card">
               <p class="costa-label">Jeres kontakt hos os</p>
@@ -295,12 +295,12 @@
   "javascript": "erhverv.js",
   "settings": [
     { "type": "collection", "id": "collection", "label": "Erhvervskollektion", "info": "Kaffen, der vises under «Vælg varer». Kassestørrelser er varianter på produktet." },
-    { "type": "url", "id": "apply_url", "label": "Side med ansøgningen" },
+    { "type": "url", "id": "apply_url", "label": "Side med formularen" },
     { "type": "header", "content": "Ikke logget ind" },
     { "type": "text", "id": "guest_heading", "label": "Overskrift", "default": "Kaffe til erhverv" },
     { "type": "richtext", "id": "guest_text", "label": "Tekst", "default": "<p>Erhvervskunder bestiller her til egen pris og ser deres ordrer og fakturaer.</p>" },
     { "type": "header", "content": "Afventer og afvist" },
-    { "type": "richtext", "id": "pending_text", "label": "Tekst, mens ansøgningen behandles", "default": "<p>Tak for ansøgningen. Vi kigger på den og skriver til jer, så snart aftalen er på plads — som regel inden for to hverdage.</p>" },
+    { "type": "richtext", "id": "pending_text", "label": "Tekst, mens aftalen venter på godkendelse", "default": "<p>Tak. Vi godkender aftalen og skriver til jer, så snart den er på plads — som regel inden for to hverdage.</p>" },
     { "type": "richtext", "id": "rejected_text", "label": "Tekst ved afvisning", "default": "<p>Vi kan desværre ikke tilbyde en erhvervsaftale lige nu. I er velkomne til at handle i webshoppen eller ringe til os.</p>" },
     { "type": "header", "content": "Jeres kontakt" },
     { "type": "text", "id": "contact_name", "label": "Navn", "default": "Café Costa Kalundborg" },
