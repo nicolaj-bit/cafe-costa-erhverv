@@ -6,163 +6,331 @@
     <title>Erhvervskunder</title>
     <!-- Client ID er ikke en hemmelighed; serveren sætter den ind fra Base44's secrets. -->
     <meta name="shopify-api-key" content="__API_KEY__" />
-    <!-- App Bridge skal være det første script. Polaris giver Shopifys eget design. -->
+    <!-- App Bridge skal være det første script. Den giver menuen, titellinjen,
+         beskeder og bekræftelsesvinduer, så appen opfører sig som en del af admin. -->
     <script src="https://cdn.shopify.com/shopifycloud/app-bridge.js"></script>
-    <script src="https://cdn.shopify.com/shopifycloud/polaris-1.js"></script>
+    <style>
+      /* ---------- Skrifter: de samme filer som i temaet ---------- */
+      @font-face { font-family: 'Bricolage Grotesque'; font-style: normal; font-weight: 800; font-display: swap; src: url('/api/admin-skrift?f=costa-bricolage-grotesque-800') format('woff2'); }
+      @font-face { font-family: 'Instrument Sans'; font-style: normal; font-weight: 400; font-display: swap; src: url('/api/admin-skrift?f=costa-instrument-sans-400') format('woff2'); }
+      @font-face { font-family: 'Instrument Sans'; font-style: normal; font-weight: 500; font-display: swap; src: url('/api/admin-skrift?f=costa-instrument-sans-500') format('woff2'); }
+      @font-face { font-family: 'Instrument Sans'; font-style: normal; font-weight: 600; font-display: swap; src: url('/api/admin-skrift?f=costa-instrument-sans-600') format('woff2'); }
+      @font-face { font-family: 'Instrument Sans'; font-style: normal; font-weight: 700; font-display: swap; src: url('/api/admin-skrift?f=costa-instrument-sans-700') format('woff2'); }
+      @font-face { font-family: 'JetBrains Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url('/api/admin-skrift?f=costa-jetbrains-mono-400') format('woff2'); }
+
+      /* ---------- Tokens: kopieret fra temaets assets/costa-tokens.css ---------- */
+      :root {
+        --costa-color-bg: #efe8dc;          /* papir */
+        --costa-color-surface: #f7f2e9;     /* kort */
+        --costa-color-text: #1c1a17;        /* tryk */
+        --costa-color-muted: #4a453d;       /* brødtekst */
+        --costa-color-accent: #9a4421;      /* ristet rød – hovedhandling */
+        --costa-color-accent-text: #ffffff;
+        --costa-color-harbor: #1e3a4c;      /* havneblå – erhverv */
+        --costa-color-harbor-text: #efe8dc;
+        --costa-color-dark: #1c1a17;
+        --costa-color-dark-text: #efe8dc;
+        --costa-color-border: #1c1a17;
+        --costa-kraft: #d8c6a8;             /* kraftpapir */
+        --costa-overlay-opacity: 0.35;
+
+        --costa-font-heading: 'Bricolage Grotesque', 'Arial Black', sans-serif;
+        --costa-font-heading-weight: 800;
+        --costa-font-body: 'Instrument Sans', -apple-system, 'Segoe UI', sans-serif;
+        --costa-font-body-weight: 400;
+        --costa-font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+        --costa-font-scale: 1;
+        --costa-heading-case: none;
+
+        --costa-text-base: calc(1.7rem * var(--costa-font-scale));
+        --costa-text-small: calc(1.5rem * var(--costa-font-scale));
+        --costa-text-label: calc(1.25rem * var(--costa-font-scale));
+        --costa-text-display: calc(clamp(4.4rem, 8vw, 9.6rem) * var(--costa-font-scale));
+        --costa-text-h1: calc(clamp(3.6rem, 5.6vw, 6.4rem) * var(--costa-font-scale));
+        --costa-text-h2: calc(clamp(2.8rem, 4vw, 4.4rem) * var(--costa-font-scale));
+        --costa-text-h3: calc(clamp(2rem, 2.4vw, 2.6rem) * var(--costa-font-scale));
+        --costa-line-height: 1.55;
+
+        --costa-line-width: 1.5px;
+        --costa-line: var(--costa-line-width) solid var(--costa-color-border);
+
+        --costa-space-xs: 0.4rem;
+        --costa-space-s: 0.8rem;
+        --costa-space-m: 1.6rem;
+        --costa-space-l: 3.2rem;
+        --costa-space-xl: 5.6rem;
+        --costa-space-section: 88px;
+        --costa-page-width: 1320px;
+        --costa-gutter: 16px;
+
+        --costa-radius: 6px;
+        --costa-button-radius: 999px;
+        --costa-button-padding: 13px;
+        --costa-button-case: none;
+        --costa-button-border: 1.5px;
+
+        /* Appens egne navne — peger kun på temaets værdier. */
+        --app-touch: 44px;
+        --app-status-afventer-bg: var(--costa-kraft);
+        --app-status-afventer-text: var(--costa-color-text);
+        --app-status-ok-bg: var(--costa-color-harbor);
+        --app-status-ok-text: var(--costa-color-harbor-text);
+        --app-status-fejl-bg: var(--costa-color-accent);
+        --app-status-fejl-text: var(--costa-color-accent-text);
+        --app-status-neutral-bg: transparent;
+        --app-status-neutral-text: var(--costa-color-muted);
+      }
+
+      /* ---------- Grundlag ---------- */
+      html { font-size: 62.5%; } /* 1rem = 10px, som i temaet */
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--costa-color-bg);
+        color: var(--costa-color-text);
+        font-family: var(--costa-font-body);
+        font-weight: var(--costa-font-body-weight);
+        font-size: var(--costa-text-base);
+        line-height: var(--costa-line-height);
+        -webkit-font-smoothing: antialiased;
+      }
+      [hidden] { display: none !important; }
+      .app { max-width: var(--costa-page-width); margin-inline: auto; padding: var(--costa-space-m) var(--costa-gutter) var(--costa-space-xl); }
+      @media (min-width: 750px) { .app { padding-inline: calc(var(--costa-gutter) * 2); } }
+      h1, h2, h3 { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); text-transform: var(--costa-heading-case); line-height: 1.05; letter-spacing: -0.02em; margin: 0; }
+      h1 { font-size: var(--costa-text-h2); }
+      h2 { font-size: var(--costa-text-h3); }
+      h3 { font-size: var(--costa-text-base); letter-spacing: -0.01em; }
+      p { margin: 0; }
+      a { color: inherit; text-underline-offset: 3px; }
+      .muted { color: var(--costa-color-muted); }
+      .small { font-size: var(--costa-text-small); }
+      .mono { font-family: var(--costa-font-mono); font-size: var(--costa-text-small); }
+      .label { font-family: var(--costa-font-mono); font-size: var(--costa-text-label); text-transform: uppercase; letter-spacing: 0.08em; color: var(--costa-color-muted); }
+      .stack { display: grid; gap: var(--costa-space-m); }
+      .stack--s { gap: var(--costa-space-s); }
+      .stack--l { gap: var(--costa-space-l); }
+      .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--costa-space-s); }
+      .row--between { justify-content: space-between; }
+
+      /* ---------- Faner ---------- */
+      .tabs { display: flex; gap: var(--costa-space-s); overflow-x: auto; padding-bottom: var(--costa-space-m); border-bottom: var(--costa-line); margin-bottom: var(--costa-space-l); }
+      .tab {
+        display: inline-flex; align-items: center; gap: var(--costa-space-s);
+        min-height: var(--app-touch); padding: 0 calc(var(--costa-button-padding) + 6px);
+        border: var(--costa-button-border) solid var(--costa-color-border); border-radius: var(--costa-button-radius);
+        background: transparent; color: var(--costa-color-text);
+        font: 600 var(--costa-text-small) var(--costa-font-body); white-space: nowrap; cursor: pointer; text-decoration: none;
+      }
+      .tab[aria-current="page"] { background: var(--costa-color-text); color: var(--costa-color-bg); }
+      .tab__tal { display: inline-grid; place-items: center; min-width: 2.4rem; height: 2.4rem; padding: 0 0.7rem; border-radius: var(--costa-button-radius); background: var(--costa-color-accent); color: var(--costa-color-accent-text); font-family: var(--costa-font-mono); font-size: var(--costa-text-label); }
+
+      /* ---------- Knapper ---------- */
+      .btn {
+        display: inline-flex; align-items: center; justify-content: center; gap: var(--costa-space-s);
+        min-height: var(--app-touch); padding: 0 calc(var(--costa-button-padding) + 8px);
+        border: var(--costa-button-border) solid var(--costa-color-border); border-radius: var(--costa-button-radius);
+        background: transparent; color: var(--costa-color-text);
+        font: 600 var(--costa-text-small) var(--costa-font-body); text-transform: var(--costa-button-case);
+        text-decoration: none; cursor: pointer; white-space: nowrap;
+      }
+      .btn:hover { background: var(--costa-color-surface); }
+      .btn--primary { background: var(--costa-color-accent); border-color: var(--costa-color-accent); color: var(--costa-color-accent-text); }
+      .btn--primary:hover { background: var(--costa-color-accent); filter: brightness(0.92); }
+      .btn--harbor { background: var(--costa-color-harbor); border-color: var(--costa-color-harbor); color: var(--costa-color-harbor-text); }
+      .btn--harbor:hover { background: var(--costa-color-harbor); filter: brightness(1.15); }
+      .btn--link { border-color: transparent; text-decoration: underline; padding-inline: var(--costa-space-s); }
+      .btn--link:hover { background: transparent; }
+      .btn--rund { width: var(--app-touch); padding: 0; }
+      .btn[disabled], .btn[aria-busy="true"] { opacity: 0.55; cursor: progress; }
+      .btn:focus-visible, .tab:focus-visible, .felt input:focus-visible, .valg input:focus-visible + span, .soeg:focus-visible { outline: var(--costa-line-width) solid var(--costa-color-accent); outline-offset: 3px; }
+
+      /* ---------- Kort og lister ---------- */
+      .kort { background: var(--costa-color-surface); border: var(--costa-line); border-radius: var(--costa-radius); padding: var(--costa-space-m); }
+      @media (min-width: 750px) { .kort { padding: calc(var(--costa-space-m) * 1.5); } }
+      .tal-raekke { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: var(--costa-space-m); }
+      .tal { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); font-size: var(--costa-text-h3); line-height: 1.1; }
+      .liste { display: grid; gap: var(--costa-space-s); }
+      .linje {
+        display: grid; gap: var(--costa-space-s) var(--costa-space-m); align-items: center;
+        grid-template-columns: 1fr auto;
+        background: var(--costa-color-surface); border: var(--costa-line); border-radius: var(--costa-radius); padding: var(--costa-space-m);
+      }
+      .linje__hoved { grid-column: 1 / -1; display: grid; gap: 0.2rem; }
+      .linje__info { display: grid; gap: 0.2rem; }
+      .linje__handling { justify-self: end; }
+      @media (min-width: 900px) {
+        .linje { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1.6fr) minmax(0, 1fr) auto auto; }
+        .linje__hoved { grid-column: auto; }
+      }
+      .linje > .maerke { justify-self: start; }
+      @media (max-width: 749px) { .tabs { flex-wrap: wrap; } }
+      .tom { padding: var(--costa-space-l) var(--costa-space-m); text-align: center; border: var(--costa-line); border-style: dashed; border-radius: var(--costa-radius); color: var(--costa-color-muted); }
+
+      /* ---------- Status ---------- */
+      .maerke {
+        display: inline-flex; align-items: center; gap: 0.6rem; min-height: 2.8rem; padding: 0 1.2rem;
+        border: var(--costa-line-width) solid transparent; border-radius: var(--costa-button-radius);
+        font: 600 var(--costa-text-label) var(--costa-font-body); letter-spacing: 0.02em; white-space: nowrap;
+      }
+      .maerke::before { content: ""; width: 0.8rem; height: 0.8rem; border-radius: 50%; background: currentColor; }
+      .maerke--afventer { background: var(--app-status-afventer-bg); color: var(--app-status-afventer-text); }
+      .maerke--godkendt, .maerke--aktiv { background: var(--app-status-ok-bg); color: var(--app-status-ok-text); }
+      .maerke--afvist { background: var(--app-status-neutral-bg); color: var(--app-status-neutral-text); border-color: currentColor; }
+      .maerke--fejlet { background: var(--app-status-fejl-bg); color: var(--app-status-fejl-text); }
+      .linje--fejlet { border-color: var(--costa-color-accent); box-shadow: inset 6px 0 0 var(--costa-color-accent); }
+      .besked { border: var(--costa-line); border-radius: var(--costa-radius); padding: var(--costa-space-m); background: var(--costa-color-surface); }
+      .besked--fejl { border-color: var(--costa-color-accent); box-shadow: inset 6px 0 0 var(--costa-color-accent); }
+      .besked--info { border-color: var(--costa-color-harbor); box-shadow: inset 6px 0 0 var(--costa-color-harbor); }
+
+      /* ---------- Filtre og felter ---------- */
+      .filtre { display: grid; gap: var(--costa-space-s); }
+      @media (min-width: 750px) { .filtre { grid-template-columns: 1fr auto; align-items: center; } }
+      .soeg {
+        width: 100%; min-height: var(--app-touch); padding: 0 var(--costa-space-m);
+        border: var(--costa-line); border-radius: var(--costa-button-radius); background: var(--costa-color-surface);
+        color: var(--costa-color-text); font: var(--costa-text-small) var(--costa-font-body);
+      }
+      .valg-gruppe { display: flex; flex-wrap: wrap; gap: var(--costa-space-s); border: 0; padding: 0; margin: 0; }
+      .valg { position: relative; }
+      .valg input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+      .valg span {
+        display: inline-flex; align-items: center; min-height: var(--app-touch); padding: 0 calc(var(--costa-button-padding) + 6px);
+        border: var(--costa-button-border) solid var(--costa-color-border); border-radius: var(--costa-button-radius);
+        font: 600 var(--costa-text-small) var(--costa-font-body);
+      }
+      .valg input:checked + span { background: var(--costa-color-harbor); border-color: var(--costa-color-harbor); color: var(--costa-color-harbor-text); }
+      .felter { display: grid; gap: var(--costa-space-m) var(--costa-space-l); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+      .felt { display: grid; gap: 0.2rem; }
+      .felt input {
+        width: 100%; max-width: 160px; min-height: var(--app-touch); padding: 0 var(--costa-space-m);
+        border: var(--costa-line); border-radius: var(--costa-radius); background: var(--costa-color-bg);
+        color: var(--costa-color-text); font: 600 var(--costa-text-base) var(--costa-font-mono);
+      }
+      .med-enhed { display: flex; align-items: center; gap: var(--costa-space-s); }
+
+      /* ---------- Detalje ---------- */
+      .tilbage { margin-bottom: var(--costa-space-m); }
+      .handlinger { display: flex; flex-wrap: wrap; gap: var(--costa-space-s); align-items: center; padding-top: var(--costa-space-m); border-top: var(--costa-line); }
+      @media (max-width: 749px) { .handlinger .btn:not(.btn--link) { flex: 1 1 100%; } }
+      table.plan { width: 100%; border-collapse: collapse; font-size: var(--costa-text-small); }
+      table.plan th { text-align: left; font: 500 var(--costa-text-label) var(--costa-font-mono); text-transform: uppercase; letter-spacing: 0.08em; color: var(--costa-color-muted); padding: var(--costa-space-s); border-bottom: var(--costa-line); }
+      table.plan td { padding: var(--costa-space-s); border-bottom: var(--costa-line-width) solid var(--costa-color-border); vertical-align: top; }
+      table.plan tr:last-child td { border-bottom: 0; }
+      table.plan .tal-celle { text-align: right; font-family: var(--costa-font-mono); white-space: nowrap; }
+      .tabel-ramme { overflow-x: auto; }
+
+      @media print {
+        .tabs, .ingen-print, ui-title-bar { display: none !important; }
+        body { background: var(--costa-color-surface); }
+      }
+    </style>
   </head>
   <body data-side="__SIDE__">
     <ui-nav-menu>
-      <a href="/api/admin" rel="home">Ansøgninger</a>
-      <a href="/api/admin-risteplan">Risteplan</a>
-      <a href="/api/admin-indstillinger">Prisniveauer</a>
+      <a href="/api/admin" rel="home">Erhvervskunder</a>
+      <a href="/api/admin-ansoegninger">Ansøgninger</a>
+      <a href="/api/admin-aftaler">Aftaler</a>
+      <a href="/api/admin-indstillinger">Indstillinger</a>
     </ui-nav-menu>
+    <ui-title-bar id="titel" title="Erhvervskunder"></ui-title-bar>
 
-    <!-- Serveren sender kun én af de to sider: Shopifys titellinje læser den
-         første s-page i dokumentet, også en skjult. -->
-    <!--SIDE:ansoegninger-->
-    <div id="side-ansoegninger" hidden>
-      <s-page heading="Erhvervskunder" inlineSize="large">
-        <s-button slot="primary-action" id="refresh">Opdatér</s-button>
-        <s-button slot="secondary-actions" href="/api/admin-risteplan">Risteplan</s-button>
-        <s-button slot="secondary-actions" href="/api/admin-indstillinger">Prisniveauer</s-button>
+    <main class="app">
+      <nav class="tabs" aria-label="Faner">
+        <a class="tab" href="/api/admin-ansoegninger" data-fane="ansoegninger">Ansøgninger <span class="tab__tal" id="tal-ansoegninger" hidden></span></a>
+        <a class="tab" href="/api/admin-aftaler" data-fane="aftaler">Aftaler <span class="tab__tal" id="tal-aftaler" hidden></span></a>
+        <a class="tab" href="/api/admin-indstillinger" data-fane="indstillinger">Indstillinger</a>
+      </nav>
 
-        <div id="error" hidden>
-          <s-banner tone="critical" heading="Kunne ikke hente ansøgninger">
-            <s-paragraph id="error-text"></s-paragraph>
-          </s-banner>
+      <!-- Ansøgninger -->
+      <section id="fane-ansoegninger" class="stack stack--l" hidden>
+        <div id="ans-liste-visning" class="stack stack--l">
+          <div class="stack stack--s">
+            <h1>Ansøgninger</h1>
+            <p class="muted">Virksomheder, der vil have en erhvervsaftale. Godkend dem, og vælg deres rabat.</p>
+          </div>
+          <div id="ans-fejl" class="besked besked--fejl" hidden></div>
+          <div class="filtre">
+            <input class="soeg" id="soeg" type="search" placeholder="Søg på firma, CVR, kontakt eller by" aria-label="Søg" />
+            <fieldset class="valg-gruppe" id="filter" aria-label="Vis">
+              <label class="valg"><input type="radio" name="filter" value="afventer" checked /><span>Afventer</span></label>
+              <label class="valg"><input type="radio" name="filter" value="godkendt" /><span>Godkendt</span></label>
+              <label class="valg"><input type="radio" name="filter" value="afvist" /><span>Afvist</span></label>
+              <label class="valg"><input type="radio" name="filter" value="alle" /><span>Alle</span></label>
+            </fieldset>
+          </div>
+          <div class="liste" id="ans-liste"><p class="tom">Henter …</p></div>
         </div>
+        <div id="ans-detalje" class="stack stack--l" hidden></div>
+      </section>
 
-        <s-section>
-          <s-grid gridTemplateColumns="repeat(auto-fit, minmax(160px, 1fr))" gap="base" id="stats"></s-grid>
-        </s-section>
+      <!-- Aftaler -->
+      <section id="fane-aftaler" class="stack stack--l" hidden>
+        <div id="aft-liste-visning" class="stack stack--l">
+          <div class="stack stack--s ingen-print">
+            <h1>Aftaler</h1>
+            <p class="muted">Virksomheder med fast levering. Beløbet trækkes automatisk på kortet ved hver levering.</p>
+          </div>
+          <div id="aft-fejl" class="besked besked--fejl" hidden></div>
+          <div class="tal-raekke ingen-print" id="aft-tal"></div>
+          <div class="besked besked--info ingen-print">
+            <p><strong>Hvis en trækning fejler,</strong> mailer Shopify selv kunden om at opdatere kortet og prøver igen 3 gange over 7 dage. Aftalen er markeret med rødt imens.</p>
+          </div>
+          <div class="liste ingen-print" id="aft-liste"><p class="tom">Henter …</p></div>
 
-        <s-section padding="none">
-          <s-table id="table" loading>
-            <s-grid slot="filters" gridTemplateColumns="1fr auto" gap="small-200">
-              <s-search-field label="Søg" labelAccessibilityVisibility="exclusive" placeholder="Søg på firma, CVR, kontaktperson eller by" id="search"></s-search-field>
-              <s-select label="Status" labelAccessibilityVisibility="exclusive" id="status">
-                <s-option value="alle">Alle</s-option>
-                <s-option value="afventer" selected>Afventer</s-option>
-                <s-option value="godkendt">Godkendt</s-option>
-                <s-option value="afvist">Afvist</s-option>
-              </s-select>
-            </s-grid>
-            <s-table-header-row>
-              <s-table-header listSlot="primary">Virksomhed</s-table-header>
-              <s-table-header listSlot="secondary">Kontakt</s-table-header>
-              <s-table-header>Kopper pr. dag</s-table-header>
-              <s-table-header>Ansøgt</s-table-header>
-              <s-table-header listSlot="inline">Status</s-table-header>
-              <s-table-header></s-table-header>
-            </s-table-header-row>
-            <s-table-body id="rows"></s-table-body>
-          </s-table>
-        </s-section>
-      </s-page>
-
-      <s-modal id="detail" heading="Ansøgning" size="large">
-        <s-stack gap="base" id="detail-body"></s-stack>
-        <s-button slot="primary-action" variant="primary" id="approve">Godkend</s-button>
-        <s-button slot="secondary-actions" tone="critical" id="reject">Afvis</s-button>
-        <!-- Shopify viser højst to sekundære knapper. Krydset lukker vinduet. -->
-        <s-button slot="secondary-actions" id="delete">Slet</s-button>
-      </s-modal>
-    </div>
-    <!--/SIDE:ansoegninger-->
-
-    <!--SIDE:risteplan-->
-    <div id="side-risteplan" hidden>
-      <s-page heading="Risteplan" inlineSize="large">
-        <s-button slot="primary-action" id="print">Udskriv</s-button>
-        <s-button slot="secondary-actions" href="/api/admin">Ansøgninger</s-button>
-
-        <div id="plan-error" hidden>
-          <s-banner tone="critical" heading="Kunne ikke hente risteplanen">
-            <s-paragraph id="plan-error-text"></s-paragraph>
-          </s-banner>
+          <div class="stack" id="risteplan">
+            <div class="row row--between">
+              <div class="stack stack--s">
+                <h2>Hvad skal ristes</h2>
+                <p class="muted small" id="uge-dato"></p>
+              </div>
+              <div class="row ingen-print">
+                <button class="btn btn--rund" id="uge-forrige" aria-label="Forrige uge">←</button>
+                <strong id="uge-titel">Denne uge</strong>
+                <button class="btn btn--rund" id="uge-naeste" aria-label="Næste uge">→</button>
+                <button class="btn" id="print">Udskriv</button>
+              </div>
+            </div>
+            <div id="plan-fejl" class="besked besked--fejl" hidden></div>
+            <div class="kort tabel-ramme"><table class="plan" id="plan-ialt"></table></div>
+            <h3>Bestilt og ikke sendt</h3>
+            <div class="kort tabel-ramme"><table class="plan" id="plan-ventende"></table></div>
+            <h3>Faste leveringer i ugen</h3>
+            <div class="kort tabel-ramme"><table class="plan" id="plan-forventede"></table></div>
+          </div>
         </div>
+        <div id="aft-detalje" class="stack stack--l" hidden></div>
+      </section>
 
-        <s-section>
-          <s-stack direction="inline" gap="base" alignItems="center">
-            <s-button id="uge-forrige" accessibilityLabel="Forrige uge">←</s-button>
-            <s-heading id="uge-titel">Denne uge</s-heading>
-            <s-button id="uge-naeste" accessibilityLabel="Næste uge">→</s-button>
-          </s-stack>
-          <s-paragraph color="subdued" id="uge-dato"></s-paragraph>
-        </s-section>
-
-        <s-section heading="Rist i alt">
-          <s-table id="plan-ialt" loading>
-            <s-table-header-row>
-              <s-table-header listSlot="primary">Kaffe</s-table-header>
-              <s-table-header format="numeric">I alt</s-table-header>
-              <s-table-header format="numeric">Bestilt, ikke sendt</s-table-header>
-              <s-table-header format="numeric">Fast levering i ugen</s-table-header>
-            </s-table-header-row>
-            <s-table-body id="plan-ialt-rows"></s-table-body>
-          </s-table>
-        </s-section>
-
-        <s-section heading="Bestilt og ikke sendt">
-          <s-paragraph color="subdued">Ordrer, der er kommet ind og venter på at blive ristet og sendt — også fra tidligere uger.</s-paragraph>
-          <s-table id="plan-ventende" loading>
-            <s-table-header-row>
-              <s-table-header listSlot="primary">Kunde</s-table-header>
-              <s-table-header listSlot="secondary">Kaffe</s-table-header>
-              <s-table-header format="numeric">Kg</s-table-header>
-              <s-table-header>Ordre</s-table-header>
-              <s-table-header listSlot="inline">Type</s-table-header>
-            </s-table-header-row>
-            <s-table-body id="plan-ventende-rows"></s-table-body>
-          </s-table>
-        </s-section>
-
-        <s-section heading="Faste leveringer i ugen">
-          <s-paragraph color="subdued">Regnet ud fra kundens seneste ordre og rytmen. Er et abonnement sat på pause eller opsagt i Shopify Subscriptions, kan det stå her, til næste ordre udebliver.</s-paragraph>
-          <s-table id="plan-forventede" loading>
-            <s-table-header-row>
-              <s-table-header listSlot="primary">Kunde</s-table-header>
-              <s-table-header listSlot="secondary">Kaffe</s-table-header>
-              <s-table-header format="numeric">Kg</s-table-header>
-              <s-table-header>Forventet</s-table-header>
-              <s-table-header listSlot="inline">Rytme</s-table-header>
-            </s-table-header-row>
-            <s-table-body id="plan-forventede-rows"></s-table-body>
-          </s-table>
-        </s-section>
-      </s-page>
-    </div>
-    <!--/SIDE:risteplan-->
-
-    <!--SIDE:indstillinger-->
-    <div id="side-indstillinger" hidden>
-      <s-page heading="Prisniveauer" inlineSize="base">
-        <s-button slot="primary-action" variant="primary" id="save">Gem</s-button>
-        <s-button slot="secondary-actions" href="/api/admin">Tilbage til ansøgninger</s-button>
-        <div id="settings-error" hidden>
-          <s-banner tone="critical" heading="Kunne ikke gemme">
-            <s-paragraph id="settings-error-text"></s-paragraph>
-          </s-banner>
+      <!-- Indstillinger -->
+      <section id="fane-indstillinger" class="stack stack--l" hidden>
+        <div class="stack stack--s">
+          <h1>Indstillinger</h1>
+          <p class="muted">Rabatten, en erhvervskunde får på al kaffe. Du vælger kundens rabat, når du godkender den.</p>
         </div>
-        <s-section heading="Rabat pr. niveau">
-          <s-paragraph color="subdued">
-            Erhvervskunder får rabatten på alle varer i kurven, når de er logget
-            ind. Hvilket niveau en kunde har, vælger du, når du godkender. Rabatten
-            gives af appens rabatfunktion ud fra kundens tag erhverv-niveau-1, -2
-            eller -3 — det kræver hverken Shopify Plus eller B2B.
-          </s-paragraph>
-          <s-stack gap="base" id="levels">
-            <s-number-field label="Niveau 1" suffix="%" min="0" max="60" step="1" id="niveau-1"></s-number-field>
-            <s-number-field label="Niveau 2" suffix="%" min="0" max="60" step="1" id="niveau-2"></s-number-field>
-            <s-number-field label="Niveau 3" suffix="%" min="0" max="60" step="1" id="niveau-3"></s-number-field>
-          </s-stack>
-        </s-section>
-        <s-section heading="Rabatten i Shopify">
-          <s-paragraph id="discount-status">Henter …</s-paragraph>
-        </s-section>
-      </s-page>
-    </div>
-    <!--/SIDE:indstillinger-->
+        <div id="ind-fejl" class="besked besked--fejl" hidden></div>
+        <div class="kort stack">
+          <h2>Rabatter</h2>
+          <div class="felter">
+            <label class="felt"><span class="label">Rabat 1</span><span class="med-enhed"><input type="number" inputmode="numeric" min="0" max="60" step="1" id="sats-1" /> %</span></label>
+            <label class="felt"><span class="label">Rabat 2</span><span class="med-enhed"><input type="number" inputmode="numeric" min="0" max="60" step="1" id="sats-2" /> %</span></label>
+            <label class="felt"><span class="label">Rabat 3</span><span class="med-enhed"><input type="number" inputmode="numeric" min="0" max="60" step="1" id="sats-3" /> %</span></label>
+          </div>
+          <p class="muted small">Rabatten trækkes fra ved kassen, når kunden er logget ind — også på hver fast levering.</p>
+          <p id="rabat-status" class="small">Henter …</p>
+          <div class="handlinger"><button class="btn btn--primary" id="gem">Gem rabatter</button></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bekræftelse vises af Shopify admin selv. -->
+    <ui-modal id="bekraeft">
+      <p id="bekraeft-tekst" style="padding: 16px"></p>
+      <ui-title-bar id="bekraeft-titel" title="Er du sikker?">
+        <button variant="primary" tone="critical" id="bekraeft-ja">Ja</button>
+        <button id="bekraeft-nej">Fortryd</button>
+      </ui-title-bar>
+    </ui-modal>
 
     <script type="module">__CLIENT_JS__</script>
   </body>

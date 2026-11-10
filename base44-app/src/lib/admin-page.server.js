@@ -10,11 +10,7 @@ const escapeAttr = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", 
 export function adminPageResponse(side) {
   const { clientId, store } = shopifyEnv();
   // Funktioner som erstatning, så $-tegn i koden ikke tolkes af replace.
-  let html = pageHtml;
-  for (const anden of ["ansoegninger", "risteplan", "indstillinger"]) {
-    if (anden !== side) html = html.replace(new RegExp(`<!--SIDE:${anden}-->[\\s\\S]*?<!--/SIDE:${anden}-->`), "");
-  }
-  html = html
+  const html = pageHtml
     .replace("__API_KEY__", () => escapeAttr(clientId))
     .replace("__SIDE__", () => escapeAttr(side))
     .replace("__CLIENT_JS__", () => clientJs);

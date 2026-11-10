@@ -95,6 +95,58 @@
     if (note) note.hidden = !fast;
   });
 
+  // ------------------------------------------------ Antal
+  document.addEventListener('click', (e) => {
+    const knap = e.target.closest('[data-erhverv-antal] [data-trin]');
+    if (!knap) return;
+    const felt = knap.closest('[data-erhverv-antal]').querySelector('input');
+    const nyt = Math.min(99, Math.max(1, (parseInt(felt.value, 10) || 1) + Number(knap.dataset.trin)));
+    felt.value = String(nyt);
+  });
+
+  // ------------------------------------------------ Min aftale (fast levering)
+  // Kundens egne aftaler hentes gennem app proxy'en. Shopify signerer kaldet og
+  // fortæller, hvem der er logget ind, så kunden kun ser sine egne.
+  const dkDato = (iso) => new Date(iso).toLocaleDateString('da-DK', { weekday: 'long', day: 'numeric', month: 'long' });
+  const kr = (n, valuta) => Number(n).toLocaleString('da-DK', { style: 'currency', currency: valuta || 'DKK' });
+  const el = (tag, cls, tekst) => { const e = document.createElement(tag); if (cls) e.className = cls; if (tekst != null) e.textContent = tekst; return e; };
+
+  for (const kort of document.querySelectorAll('[data-erhverv-aftale]')) {
+    if (kort.dataset.ready) continue;
+    kort.dataset.ready = '1';
+    fetch(`${kort.dataset.url}?visning=aftale`, { headers: { Accept: 'application/json' }, credentials: 'same-origin' })
+      .then((r) => r.json())
+      .then((svar) => {
+        if (!svar?.ok || !svar.aftaler?.length) return;
+        const liste = kort.querySelector('[data-erhverv-aftale-liste]');
+        for (const a of svar.aftaler) {
+          const item = el('div', 'erhverv-aftale__item');
+          if (a.fejlet) item.append(el('p', 'erhverv-aftale__fejl', 'Den seneste trækning gik ikke igennem. Opdatér kortet på jeres konto — vi har sendt jer en mail med et link.'));
+          const dl = el('dl', 'erhverv-aftale__fakta');
+          const fakta = [
+            [a.fejlet ? 'Skulle trækkes' : 'Næste trækning', a.naeste ? dkDato(a.naeste) : '–'],
+            ['Beløb', kr(a.beloeb, a.valuta)],
+            ['Rytme', a.rytme || 'Hver måned'],
+            ['Kort', a.kort?.sidste4 ? `•••• ${a.kort.sidste4}` : '–'],
+          ];
+          for (const [k, v] of fakta) { const d = el('div'); d.append(el('dt', null, k), el('dd', null, v)); dl.append(d); }
+          const varer = el('ul', 'erhverv-aftale__varer');
+          for (const l of a.linjer) varer.append(el('li', null, `${l.antal} × ${l.kaffe}${l.variant ? ` · ${l.variant}` : ''}`));
+          const knapper = el('div', 'erhverv-card__actions');
+          for (const [tekst, primaer] of [['Ændr varer', true], ['Spring en måned over'], ['Pause'], ['Opsig']]) {
+            const a2 = el('a', `costa-button costa-button--small${primaer ? ' costa-button--primary' : ''}`, tekst);
+            a2.href = kort.dataset.konto;
+            knapper.append(a2);
+          }
+          item.append(dl, varer, knapper);
+          liste.append(item);
+        }
+        liste.hidden = false;
+        kort.querySelector('[data-erhverv-aftale-tom]').hidden = true;
+      })
+      .catch(() => {});
+  }
+
   // ------------------------------------------------ Pris for valgt kassestørrelse
   document.addEventListener('change', (e) => {
     const valg = e.target.closest('[data-erhverv-variant]');

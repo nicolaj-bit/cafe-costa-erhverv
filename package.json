@@ -9,7 +9,7 @@
     "deploy": "shopify app deploy",
     "config:link": "shopify app config link",
     "info": "shopify app info",
-    "test": "npm --workspace erhverv-rabat run test",
+    "test": "npm --workspace erhverv-rabat --workspace erhverv-adgang run test",
     "build:rabat": "npm --workspace erhverv-rabat run build"
   },
   "devDependencies": {
