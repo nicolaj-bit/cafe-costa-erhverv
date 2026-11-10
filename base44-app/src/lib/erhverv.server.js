@@ -115,7 +115,7 @@ export async function modtagAnsoegning(base44, env, input, { loggedInCustomerId 
 
   const db = base44.asServiceRole.entities.Virksomhed;
   const tidligere = await db.filter({ cvr }, "-created_date", 5);
-  if (tidligere.some((r) => r.status === "afventer")) throw new HttpError(409, "Der ligger allerede en ansøgning fra dette CVR-nummer. Vi vender tilbage hurtigst muligt.");
+  if (tidligere.some((r) => r.status === "afventer")) throw new HttpError(409, "Der er allerede oprettet en erhvervsaftale med dette CVR-nummer. Vi godkender den hurtigst muligt.");
   if (tidligere.some((r) => r.status === "godkendt")) throw new HttpError(409, "Virksomheden er allerede erhvervskunde. Log ind for at bestille.");
 
   const felter = { ...v, cvr, telefon };
@@ -229,7 +229,7 @@ export async function godkend(base44, env, id, prisniveau) {
     subject: `Velkommen som erhvervskunde hos ${butik.navn}`,
     afsnit: [
       { tekst: `Kære ${v.kontaktperson}` },
-      { tekst: `${v.firmanavn} er nu godkendt som erhvervskunde. I får ${satser[niveau]} % på kaffen, og prisen står allerede, når I er logget ind.` },
+      { tekst: `${v.firmanavn} er nu godkendt som erhvervskunde. I får ${satser[niveau]} % på kaffen. Rabatten trækkes fra ved kassen, når I er logget ind.` },
       { tekst: "Log ind med denne e-mail for at se jeres aftale, bestille og finde fakturaer", link: `${butik.url}/pages/erhverv` },
       { tekst: "Venlig hilsen\nCafé Costa, Kalundborg" },
     ],
@@ -247,10 +247,10 @@ export async function afvis(base44, env, id) {
   const butik = await butikInfo(env);
   const mail = await sendMail(base44, {
     to: v.email,
-    subject: `Jeres erhvervsansøgning hos ${butik.navn}`,
+    subject: `Jeres erhvervsaftale hos ${butik.navn}`,
     afsnit: [
       { tekst: `Kære ${v.kontaktperson}` },
-      { tekst: `Tak for jeres ansøgning. Vi kan desværre ikke oprette ${v.firmanavn} som erhvervskunde lige nu. I er altid velkomne til at handle i webshoppen eller skrive til os, hvis I har spørgsmål.` },
+      { tekst: `Tak for jeres interesse. Vi kan desværre ikke oprette ${v.firmanavn} som erhvervskunde lige nu. I er altid velkomne til at handle i webshoppen eller skrive til os, hvis I har spørgsmål.` },
       { tekst: "Venlig hilsen\nCafé Costa, Kalundborg" },
     ],
   });
