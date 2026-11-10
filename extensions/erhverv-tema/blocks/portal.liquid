@@ -161,7 +161,7 @@
             {%- endcomment -%}
             <div class="costa-card erhverv-card">
               <p class="costa-label">Fast levering</p>
-              <p>Få kaffen leveret fast hver uge, hver 2. uge eller hver måned. Vælg «Fast levering» ved kaffen — kortet gemmes ved første køb, og leveringerne trækkes automatisk.</p>
+              <p>Få kaffen leveret fast hver uge, hver 2. uge eller hver måned. Vælg «Fast levering» ved kaffen. Første levering kommer inden for ca. 1 uge, og derefter kommer den automatisk efter rytmen. Kortet gemmes ved første køb.</p>
               <div class="erhverv-card__actions">
                 <button type="button" class="costa-button costa-button--primary" data-erhverv-goto="varer">Vælg kaffe</button>
                 <a class="costa-button" href="{{ routes.account_url }}">Se og ændr faste leveringer</a>
@@ -263,6 +263,7 @@
                               {%- endfor -%}
                             {%- endfor -%}
                           </select>
+                          <p class="costa-muted erhverv-plan__note" hidden data-erhverv-plan-note>Første levering inden for ca. 1 uge — derefter efter den valgte rytme.</p>
                         </fieldset>
                       {%- endif -%}
                       <input type="hidden" name="quantity" value="1">

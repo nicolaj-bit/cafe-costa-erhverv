@@ -91,6 +91,8 @@
     const fast = valg.value === 'fast';
     rytme.disabled = !fast;
     rytme.hidden = !fast;
+    const note = valg.closest('[data-erhverv-plan]').querySelector('[data-erhverv-plan-note]');
+    if (note) note.hidden = !fast;
   });
 
   // ------------------------------------------------ Pris for valgt kassestørrelse
