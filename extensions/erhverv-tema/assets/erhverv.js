@@ -75,7 +75,23 @@
     });
     const fraAdresse = faner.find((f) => `#${f.dataset.tab}` === location.hash);
     if (fraAdresse) vaelg(fraAdresse);
+    // Knapper i panelerne, der skifter fane (f.eks. «Vælg kaffe»).
+    rod.addEventListener('click', (e) => {
+      const knap = e.target.closest('[data-erhverv-goto]');
+      const fane = knap && faner.find((f) => f.dataset.tab === knap.dataset.erhvervGoto);
+      if (fane) { vaelg(fane, true); liste.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    });
   }
+
+  // ------------------------------------------------ Fast levering
+  document.addEventListener('change', (e) => {
+    const valg = e.target.closest('[data-erhverv-plan-valg]');
+    if (!valg) return;
+    const rytme = valg.closest('[data-erhverv-plan]').querySelector('[data-erhverv-plan-rytme]');
+    const fast = valg.value === 'fast';
+    rytme.disabled = !fast;
+    rytme.hidden = !fast;
+  });
 
   // ------------------------------------------------ Pris for valgt kassestørrelse
   document.addEventListener('change', (e) => {

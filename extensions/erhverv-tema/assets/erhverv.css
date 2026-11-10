@@ -31,6 +31,11 @@
 .erhverv-card .costa-button { align-self: flex-start; margin-top: auto; }
 .erhverv-card--kraft { background: var(--costa-kraft, #d8c6a8); }
 .erhverv-card--soon { border-style: dashed; background: transparent; }
+.erhverv-card__actions { display: flex; flex-wrap: wrap; gap: var(--costa-space-s); margin-top: auto; }
+.erhverv-card .erhverv-card__actions .costa-button { margin-top: 0; }
+.erhverv-plan { display: flex; flex-wrap: wrap; align-items: center; gap: var(--costa-space-xs); border: 0; padding: 0; margin: 0 0 var(--costa-space-s); }
+.erhverv-plan__rytme { flex: 1 1 100%; }
+.erhverv-plan__rytme[hidden] { display: none; }
 .erhverv-soon { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); font-size: var(--costa-text-h2); line-height: 1; color: var(--costa-color-muted); }
 .erhverv-big { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); font-size: var(--costa-text-display); line-height: 0.9; color: var(--costa-color-accent); }
 .erhverv-contact-name { font-weight: 600; }
