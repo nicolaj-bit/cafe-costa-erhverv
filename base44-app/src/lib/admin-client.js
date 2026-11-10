@@ -83,6 +83,9 @@ const STATUS = {
   afvist: "Afvist",
   aktiv: "Aktiv",
   fejlet: "Fejlet trækning",
+  betalt: "Betalt",
+  reserveret: "I en kurv",
+  annulleret: "Annulleret",
 };
 const maerke = (status) => h("span", { class: "maerke maerke--" + status }, STATUS[status] || status);
 const KOPPER = { "under-50": "Under 50", "50-150": "50–150", "150-300": "150–300", "over-300": "Over 300" };
@@ -103,9 +106,10 @@ function visFejl(id, e) {
 const FANER = {
   ansoegninger: { titel: "Ansøgninger", sti: "/api/admin-ansoegninger" },
   aftaler: { titel: "Aftaler", sti: "/api/admin-aftaler" },
+  kaffevogn: { titel: "Kaffevogn", sti: "/api/admin-kaffevogn" },
   indstillinger: { titel: "Indstillinger", sti: "/api/admin-indstillinger" },
 };
-const STIER = { "/api/admin": "ansoegninger", "/api/admin-ansoegninger": "ansoegninger", "/api/admin-aftaler": "aftaler", "/api/admin-risteplan": "aftaler", "/api/admin-indstillinger": "indstillinger" };
+const STIER = { "/api/admin": "ansoegninger", "/api/admin-ansoegninger": "ansoegninger", "/api/admin-aftaler": "aftaler", "/api/admin-risteplan": "aftaler", "/api/admin-indstillinger": "indstillinger", "/api/admin-kaffevogn": "kaffevogn" };
 const indlaest = new Set();
 
 function visFane(fane, { push = false } = {}) {
@@ -122,6 +126,7 @@ function visFane(fane, { push = false } = {}) {
     if (fane === "ansoegninger") hentAnsoegninger();
     if (fane === "aftaler") { hentAftaler(); hentPlan(); }
     if (fane === "indstillinger") hentSatser();
+    if (fane === "kaffevogn") hentKaffevogn();
   }
   window.scrollTo(0, 0);
 }
@@ -455,6 +460,148 @@ async function gemSatser(e) {
   });
 }
 
+
+// ------------------------------------------------------------------ Kaffevogn
+
+let kvMaaned = new Date().toISOString().slice(0, 7);
+let kvData = null;
+let kvValgt = null;
+
+const maanedNavn = (m) => new Date(m + "-15T12:00:00Z").toLocaleDateString("da-DK", { month: "long", year: "numeric", timeZone: "UTC" });
+const dagNavn = (d) => new Date(d + "T12:00:00Z").toLocaleDateString("da-DK", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "UTC" });
+function flytMaaned(m, n) {
+  const [aar, md] = m.split("-").map(Number);
+  const d = new Date(Date.UTC(aar, md - 1 + n, 1));
+  return d.toISOString().slice(0, 7);
+}
+
+function dagStatus(dato) {
+  const b = kvData.bookinger.filter((x) => x.dato === dato && x.status !== "annulleret");
+  const lukket = kvData.lukket.includes(dato);
+  if (b.some((x) => x.note && x.status === "betalt")) return { klasse: "fejl", tekst: "Tjek", b, lukket };
+  if (b.some((x) => x.status === "betalt")) return { klasse: "betalt", tekst: b.find((x) => x.status === "betalt").kontakt || "Betalt", b, lukket };
+  if (b.some((x) => x.status === "reserveret")) return { klasse: "reserveret", tekst: "I en kurv", b, lukket };
+  if (lukket) return { klasse: "lukket", tekst: "Lukket", b, lukket };
+  return { klasse: dato < kvData.idag ? "fortid" : "", tekst: "", b, lukket };
+}
+
+function visKalender() {
+  $("kv-titel").textContent = maanedNavn(kvMaaned);
+  const [aar, md] = kvMaaned.split("-").map(Number);
+  const dage = new Date(Date.UTC(aar, md, 0)).getUTCDate();
+  const foerste = (new Date(Date.UTC(aar, md - 1, 1)).getUTCDay() + 6) % 7;
+  const celler = ["man", "tir", "ons", "tor", "fre", "lør", "søn"].map((d) => h("div", { class: "kal__ugedag", role: "columnheader" }, d));
+  for (let i = 0; i < foerste; i++) celler.push(h("div", { class: "kal__dag kal__dag--tom", "aria-hidden": "true" }));
+  for (let d = 1; d <= dage; d++) {
+    const dato = kvMaaned + "-" + String(d).padStart(2, "0");
+    const st = dagStatus(dato);
+    celler.push(h("button", {
+      class: "kal__dag" + (st.klasse ? " kal__dag--" + st.klasse : ""),
+      "aria-pressed": String(kvValgt === dato),
+      "aria-label": dagNavn(dato) + (st.tekst ? ", " + st.tekst : ", ledig"),
+      onclick: () => visDag(dato),
+    }, h("span", {}, d), st.tekst ? h("span", { class: "kal__tekst" }, st.tekst) : null));
+  }
+  $("kv-kalender").replaceChildren(...celler);
+}
+
+function bookingKort(b) {
+  const knapper = [];
+  if (b.ordre_id) knapper.push(h("a", { class: "btn btn--harbor", href: adminLink("orders", b.ordre_id), target: "_top" }, "Se ordre " + (b.ordre_navn || "")));
+  if (b.status !== "annulleret") knapper.push(h("button", { class: "btn btn--link", onclick: (e) => annullerKv(b, e.currentTarget) }, "Frigiv dagen"));
+  return h("div", { class: "kort stack" },
+    h("div", { class: "row" }, maerke(b.status), b.note ? h("span", { class: "maerke maerke--fejl" }, "Skal tjekkes") : null),
+    b.note ? h("div", { class: "besked besked--fejl" }, b.note) : null,
+    h("div", { class: "felter" },
+      felt("Varighed", b.variant),
+      felt("Start", b.start),
+      felt("Gæster", b.gaester),
+      felt("Adresse", [b.adresse, [b.postnr, b.by].filter(Boolean).join(" ")].filter(Boolean).join(", ")),
+      felt("Kontakt", b.kontakt),
+      felt("Telefon", b.telefon ? h("a", { href: "tel:" + b.telefon }, b.telefon) : null),
+      felt("E-mail", b.email ? h("a", { href: "mailto:" + b.email }, b.email) : null),
+      b.status === "reserveret" ? felt("Holdes til", new Date(b.reserveret_til).toLocaleTimeString("da-DK", { hour: "2-digit", minute: "2-digit", timeZone: "Europe/Copenhagen" })) : null),
+    knapper.length ? h("div", { class: "handlinger" }, knapper) : null);
+}
+
+function visDag(dato) {
+  kvValgt = dato;
+  visKalender();
+  const st = dagStatus(dato);
+  const alle = kvData.bookinger.filter((x) => x.dato === dato);
+  const fortid = dato < kvData.idag;
+  $("kv-dag").replaceChildren(
+    h("div", { class: "row row--between" },
+      h("h2", {}, dagNavn(dato)),
+      fortid ? null : h("button", { class: "btn" + (st.lukket ? " btn--primary" : ""), onclick: (e) => lukKv(dato, !st.lukket, e.currentTarget) }, st.lukket ? "Åbn dagen igen" : "Luk dagen")),
+    st.lukket ? h("p", { class: "muted" }, "Dagen er lukket. Kunderne kan ikke booke den.") : null,
+    ...(alle.length ? alle.map(bookingKort) : [h("p", { class: "tom" }, fortid ? "Ingen booking." : "Ingen booking. Dagen er ledig.")]));
+  $("kv-dag").hidden = false;
+}
+
+async function hentKaffevogn() {
+  $("kv-fejl").hidden = true;
+  try {
+    kvData = await api("kaffevogn", { maaned: kvMaaned });
+    $("kv-postnumre").value = kvData.indstillinger.postnumre.join(", ");
+    $("kv-varsel").value = String(kvData.indstillinger.varsel_dage);
+    const tjek = kvData.bookinger.filter((b) => b.note && b.status === "betalt").length;
+    saetTal("tal-kaffevogn", tjek);
+    visKalender();
+    if (kvValgt && kvValgt.startsWith(kvMaaned)) visDag(kvValgt);
+    else $("kv-dag").hidden = true;
+  } catch (e) {
+    visFejl("kv-fejl", e);
+  }
+}
+
+async function lukKv(dato, luk, knap) {
+  await travl(knap, async () => {
+    try {
+      const res = await api("kaffevogn-luk", { dato, luk });
+      besked(res.advarsel || (luk ? "Dagen er lukket" : "Dagen er åbnet igen"), Boolean(res.advarsel));
+      await hentKaffevogn();
+    } catch (e) {
+      besked("Kunne ikke gemme: " + e.message, true);
+    }
+  });
+}
+
+async function annullerKv(b, knap) {
+  const ok = await bekraeft({
+    titel: "Frigiv " + dagNavn(b.dato) + "?",
+    tekst: b.ordre_id
+      ? "Dagen bliver ledig igen. Ordren " + (b.ordre_navn || "") + " er stadig betalt — refundér den i Shopify, hvis kunden skal have pengene tilbage."
+      : "Reservationen slettes, og dagen bliver ledig igen.",
+    ja: "Frigiv",
+  });
+  if (!ok) return;
+  await travl(knap, async () => {
+    try {
+      await api("kaffevogn-annuller", { id: b.id });
+      besked("Dagen er frigivet");
+      await hentKaffevogn();
+    } catch (e) {
+      besked("Kunne ikke frigive: " + e.message, true);
+    }
+  });
+}
+
+async function gemKv(e) {
+  $("kv-fejl").hidden = true;
+  await travl(e.currentTarget, async () => {
+    try {
+      const postnumre = $("kv-postnumre").value.split(/[\s,;]+/).map((x) => x.trim()).filter(Boolean);
+      kvData = await api("kaffevogn-indstillinger", { postnumre, varsel_dage: Number($("kv-varsel").value) });
+      besked("Område og varsel er gemt");
+      kvMaaned = kvData.maaned;
+      await hentKaffevogn();
+    } catch (err) {
+      visFejl("kv-fejl", err);
+    }
+  });
+}
+
 // ------------------------------------------------------------------ Start
 
 for (const a of document.querySelectorAll(".tab")) {
@@ -471,6 +618,9 @@ $("uge-forrige").addEventListener("click", () => { planUger = Math.max(-4, planU
 $("uge-naeste").addEventListener("click", () => { planUger = Math.min(8, planUger + 1); hentPlan(); });
 $("print").addEventListener("click", () => window.print());
 $("gem").addEventListener("click", gemSatser);
+$("kv-forrige").addEventListener("click", () => { kvMaaned = flytMaaned(kvMaaned, -1); hentKaffevogn(); });
+$("kv-naeste").addEventListener("click", () => { kvMaaned = flytMaaned(kvMaaned, 1); hentKaffevogn(); });
+$("kv-gem").addEventListener("click", gemKv);
 
 visFane(STIER[location.pathname] || document.body.dataset.side);
 // Tallene på fanerne skal vises, uanset hvilken fane ejeren starter på.

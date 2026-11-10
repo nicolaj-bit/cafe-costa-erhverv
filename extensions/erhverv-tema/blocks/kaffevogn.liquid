@@ -1,0 +1,135 @@
+{%- comment -%}
+  Book kaffevognen. Kunden vælger dag, varighed og sted og betaler selv i den
+  almindelige checkout. Kalenderen henter optagede dage fra /apps/erhverv
+  (app proxy → Base44). «Læg i kurv» holder dagen i 15 minutter, og felterne
+  følger med som linjeegenskaber, så de står på ordren og i ordrebekræftelsen.
+  Egenskaber, der starter med _, er skjult for kunden.
+{%- endcomment -%}
+{%- assign uid = block.id -%}
+{%- assign vogn = block.settings.product -%}
+{%- assign tlf = block.settings.phone | default: '52 76 04 60' -%}
+{%- assign optaget = shop.metafields.costa.kaffevogn_optaget.value -%}
+{%- capture optaget_liste -%}{{ optaget.optaget | join: ',' }},{{ optaget.reserveret | join: ',' }},{{ optaget.lukket | join: ',' }}{%- endcapture -%}
+<div class="costa kaffevogn" id="book" {{ block.shopify_attributes }}>
+  <div class="costa__inner costa__inner--narrow">
+    {%- if block.settings.label != blank -%}<p class="costa-label">{{ block.settings.label | escape }}</p>{%- endif -%}
+    {%- if block.settings.heading != blank -%}<h2 class="kaffevogn__title">{{ block.settings.heading | escape }}</h2>{%- endif -%}
+    {%- if block.settings.intro != blank -%}<div class="costa-richtext kaffevogn__intro">{{ block.settings.intro }}</div>{%- endif -%}
+
+    {%- if vogn == blank -%}
+      <p class="costa-form__status">Vælg produktet «Kaffevogn» i temaredigeringen under blokken «Book kaffevognen».</p>
+    {%- else -%}
+      <form
+        class="costa-form kaffevogn-form"
+        action="/apps/erhverv"
+        method="post"
+        novalidate
+        data-kaffevogn
+        data-optaget="{{ optaget_liste }}"
+        data-foerste="{{ optaget.foerste_dag }}"
+        data-telefon="{{ tlf | escape }}"
+        data-kurv="{{ routes.cart_url }}"
+        data-proxy="{{ routes.root_url | append: '/apps/erhverv' | replace: '//', '/' }}"
+      >
+        <fieldset class="kaffevogn-form__group">
+          <legend class="costa-label">1 · Vælg dag</legend>
+          <div class="kaffevogn-kal" data-kal>
+            <div class="kaffevogn-kal__top">
+              <button type="button" class="costa-button costa-button--small kaffevogn-kal__nav" data-kal-forrige aria-label="Forrige måned">←</button>
+              <p class="kaffevogn-kal__titel" data-kal-titel aria-live="polite"></p>
+              <button type="button" class="costa-button costa-button--small kaffevogn-kal__nav" data-kal-naeste aria-label="Næste måned">→</button>
+            </div>
+            <div class="kaffevogn-kal__grid" data-kal-grid role="grid"></div>
+            <p class="costa-muted kaffevogn-kal__note">
+              <span class="kaffevogn-kal__prik kaffevogn-kal__prik--ledig"></span> Ledig
+              <span class="kaffevogn-kal__prik kaffevogn-kal__prik--optaget"></span> Optaget
+            </p>
+          </div>
+          <input type="hidden" name="dato" required data-dato>
+          <p class="kaffevogn-valgt" data-valgt hidden></p>
+        </fieldset>
+
+        <fieldset class="kaffevogn-form__group">
+          <legend class="costa-label">2 · Hvor længe</legend>
+          <div class="costa-pills">
+            {%- for variant in vogn.variants -%}
+              <label class="costa-pill costa-pill--large">
+                <input type="radio" name="variant_id" value="{{ variant.id }}" {% if forloop.first %}checked{% endif %} {% unless variant.available %}disabled{% endunless %} data-pris="{{ variant.price | money }}">
+                <span>{{ variant.title | escape }}{% if variant.price > 0 %} · {{ variant.price | money }}{% endif %}</span>
+              </label>
+            {%- endfor -%}
+          </div>
+          <div class="kaffevogn-form__row">
+            <div class="costa-form__field">
+              <label for="Start-{{ uid }}">Starttidspunkt</label>
+              <select id="Start-{{ uid }}" name="start" class="costa-select" required>
+                {%- for t in (7..21) -%}
+                  {%- assign tt = t | prepend: '0' | slice: -2, 2 -%}
+                  <option value="{{ tt }}:00" {% if t == 10 %}selected{% endif %}>{{ tt }}:00</option>
+                  {%- if t < 21 -%}<option value="{{ tt }}:30">{{ tt }}:30</option>{%- endif -%}
+                {%- endfor -%}
+              </select>
+            </div>
+            <div class="costa-form__field">
+              <label for="Gaester-{{ uid }}">Antal gæster</label>
+              <input id="Gaester-{{ uid }}" name="gaester" type="number" inputmode="numeric" min="1" max="5000" required>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="kaffevogn-form__group">
+          <legend class="costa-label">3 · Hvor skal vi holde</legend>
+          <div class="costa-form__field">
+            <label for="Adresse-{{ uid }}">Adresse</label>
+            <input id="Adresse-{{ uid }}" name="adresse" type="text" autocomplete="street-address" required maxlength="200">
+          </div>
+          <div class="kaffevogn-form__row kaffevogn-form__row--zip">
+            <div class="costa-form__field">
+              <label for="Postnr-{{ uid }}">Postnr.</label>
+              <input id="Postnr-{{ uid }}" name="postnr" type="text" inputmode="numeric" autocomplete="postal-code" required pattern="[0-9]{4}" maxlength="4">
+            </div>
+            <div class="costa-form__field">
+              <label for="By-{{ uid }}">By</label>
+              <input id="By-{{ uid }}" name="by" type="text" autocomplete="address-level2" required maxlength="80">
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="kaffevogn-form__group">
+          <legend class="costa-label">4 · Kontaktperson på dagen</legend>
+          <div class="kaffevogn-form__row">
+            <div class="costa-form__field">
+              <label for="Kontakt-{{ uid }}">Navn</label>
+              <input id="Kontakt-{{ uid }}" name="kontakt" type="text" autocomplete="name" required maxlength="120" {% if customer %}value="{{ customer.name | escape }}"{% endif %}>
+            </div>
+            <div class="costa-form__field">
+              <label for="Telefon-{{ uid }}">Telefon</label>
+              <input id="Telefon-{{ uid }}" name="telefon" type="tel" autocomplete="tel" required maxlength="30" {% if customer.phone %}value="{{ customer.phone | escape }}"{% endif %}>
+            </div>
+          </div>
+        </fieldset>
+
+        <p class="costa-form__status costa-form__status--error" role="alert" data-fejl hidden></p>
+        <button type="submit" class="costa-button costa-button--buy" data-label="{{ block.settings.button | escape }}">{{ block.settings.button | escape }}</button>
+        <p class="costa-muted kaffevogn-form__note">Dagen holdes til jer i 15 minutter, mens I betaler. Spørgsmål? Ring på <a href="tel:{{ tlf | remove: ' ' }}">{{ tlf | escape }}</a>.</p>
+      </form>
+    {%- endif -%}
+  </div>
+</div>
+
+{% schema %}
+{
+  "name": "Book kaffevognen",
+  "target": "section",
+  "stylesheet": "kaffevogn.css",
+  "javascript": "kaffevogn.js",
+  "settings": [
+    { "type": "product", "id": "product", "label": "Produkt", "info": "Produktet «Kaffevogn» med varianterne 3 timer, 5 timer og Hel dag." },
+    { "type": "text", "id": "label", "label": "Etiket", "default": "Kaffevogn" },
+    { "type": "text", "id": "heading", "label": "Overskrift", "default": "Book kaffevognen" },
+    { "type": "richtext", "id": "intro", "label": "Tekst", "default": "<p>Vælg dag, hvor længe og hvor vi skal holde. Betal ved bestillingen — så er dagen jeres.</p>" },
+    { "type": "text", "id": "button", "label": "Knap", "default": "Læg i kurv" },
+    { "type": "text", "id": "phone", "label": "Telefon", "default": "52 76 04 60" }
+  ]
+}
+{% endschema %}

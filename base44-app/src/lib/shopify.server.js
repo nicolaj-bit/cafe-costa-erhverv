@@ -118,6 +118,20 @@ export async function verifyProxySignature(url, env) {
   };
 }
 
+/**
+ * Webhooks fra Shopify. `X-Shopify-Hmac-Sha256` er HMAC-SHA256 i base64 over
+ * den rå krop, signeret med appens client secret.
+ * https://shopify.dev/docs/apps/build/webhooks/subscribe/https#step-2-validate-the-origin-of-your-webhook-to-ensure-its-coming-from-shopify
+ */
+export async function verifyWebhook(rawBody, headers, env) {
+  const hmac = headers.get("x-shopify-hmac-sha256") ?? "";
+  const sig = await crypto.subtle.sign("HMAC", await hmacKey(env.clientSecret, "sign"), enc.encode(rawBody));
+  const expected = btoa(String.fromCharCode(...new Uint8Array(sig)));
+  if (!hmac || !safeEqual(expected, hmac)) throw new HttpError(401, "Forkert signatur på webhook");
+  if (String(headers.get("x-shopify-shop-domain") ?? "").toLowerCase() !== env.store) throw new HttpError(401, "Forkert butik");
+  return { topic: headers.get("x-shopify-topic") ?? "", id: headers.get("x-shopify-webhook-id") ?? "" };
+}
+
 // Adgangstoken til Admin API'et. Appen og butikken ligger i samme organisation
 // i Dev Dashboard, så appen kan selv hente et token med client credentials —
 // der skal ikke gemmes noget. Tokenet gælder ca. et døgn; vi holder det i

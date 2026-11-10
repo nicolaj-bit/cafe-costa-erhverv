@@ -1,0 +1,43 @@
+/* Book kaffevognen. Bygger på temaets costa-klasser; alle farver, skrifter og
+   afstande kommer fra variablerne i costa-tokens.css. */
+.kaffevogn { padding-block: var(--costa-space-section); scroll-margin-top: 80px; }
+.kaffevogn__title { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); text-transform: var(--costa-heading-case); font-size: var(--costa-text-h1); line-height: 1.02; margin: var(--costa-space-xs) 0 var(--costa-space-m); }
+.kaffevogn__intro { max-width: 60ch; margin-bottom: var(--costa-space-l); }
+
+.kaffevogn-form__group { border: 0; padding: 0; margin: 0; display: grid; gap: var(--costa-space-s); }
+.kaffevogn-form__group + .kaffevogn-form__group { padding-top: var(--costa-space-m); border-top: var(--costa-line); }
+.kaffevogn-form__group legend { margin-bottom: var(--costa-space-s); }
+.kaffevogn-form__row { display: grid; gap: var(--costa-space-s); grid-template-columns: 1fr; align-items: start; }
+@media (min-width: 750px) {
+  .kaffevogn-form__row { grid-template-columns: 1fr 1fr; }
+  .kaffevogn-form__row--zip { grid-template-columns: 9rem 1fr; }
+}
+.kaffevogn-form [aria-invalid="true"] { border-color: var(--costa-color-accent); }
+.kaffevogn-form .costa-button--buy { justify-self: start; margin-top: var(--costa-space-m); }
+.kaffevogn-form__note { margin: var(--costa-space-s) 0 0; }
+.kaffevogn-form .costa-form__status a { color: inherit; font-weight: 600; }
+
+/* Kalender */
+.kaffevogn-kal { background: var(--costa-color-surface); border: var(--costa-line); border-radius: var(--costa-radius); padding: var(--costa-space-m); }
+.kaffevogn-kal__top { display: flex; align-items: center; justify-content: space-between; gap: var(--costa-space-s); margin-bottom: var(--costa-space-m); }
+.kaffevogn-kal__titel { margin: 0; font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); font-size: var(--costa-text-h3); }
+.kaffevogn-kal__nav { min-width: 44px; min-height: 44px; padding: 0; justify-content: center; }
+.kaffevogn-kal__nav:disabled { opacity: 0.35; cursor: not-allowed; }
+.kaffevogn-kal__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--costa-space-xs); }
+.kaffevogn-kal__ugedag { font-family: var(--costa-font-mono); font-size: var(--costa-text-label); text-transform: uppercase; letter-spacing: 0.06em; color: var(--costa-color-muted); text-align: center; padding-bottom: var(--costa-space-xs); }
+.kaffevogn-kal__dag {
+  aspect-ratio: 1; min-height: 40px; display: grid; place-items: center;
+  border: var(--costa-line-width) solid var(--costa-color-border); border-radius: var(--costa-radius);
+  background: var(--costa-color-bg); color: var(--costa-color-text);
+  font: 600 var(--costa-text-small) var(--costa-font-body); cursor: pointer;
+}
+.kaffevogn-kal__dag:hover:not(:disabled) { background: var(--costa-color-text); color: var(--costa-color-bg); }
+.kaffevogn-kal__dag:focus-visible { outline: 2px solid var(--costa-color-accent); outline-offset: 2px; }
+.kaffevogn-kal__dag.is-optaget, .kaffevogn-kal__dag:disabled { background: transparent; border-style: dashed; color: var(--costa-color-muted); text-decoration: line-through; cursor: not-allowed; }
+.kaffevogn-kal__dag.is-valgt { background: var(--costa-color-accent); border-color: var(--costa-color-accent); color: var(--costa-color-accent-text); }
+.kaffevogn-kal__note { display: flex; flex-wrap: wrap; align-items: center; gap: var(--costa-space-xs) var(--costa-space-s); margin: var(--costa-space-m) 0 0; }
+.kaffevogn-kal__prik { display: inline-block; width: 1.2rem; height: 1.2rem; border-radius: calc(var(--costa-radius) / 2); border: var(--costa-line-width) solid var(--costa-color-border); }
+.kaffevogn-kal__prik--ledig { background: var(--costa-color-bg); }
+.kaffevogn-kal__prik--optaget { background: transparent; border-style: dashed; }
+.kaffevogn-valgt { margin: 0; font-weight: 600; }
+.kaffevogn-valgt[hidden], .kaffevogn-form [data-fejl][hidden] { display: none; }

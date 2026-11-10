@@ -32,6 +32,11 @@ prefix = "apps"
 [webhooks]
 api_version = "2026-04"
 
+# Kaffevognen: betalt ved ny ordre, frigivet ved annullering eller refusion.
+[[webhooks.subscriptions]]
+topics = [ "orders/create", "orders/cancelled", "refunds/create" ]
+uri = "https://cafe-costa-erhverv-cbbca2d0.base44.app/api/webhooks"
+
 [pos]
 embedded = false
 

@@ -177,7 +177,7 @@
       .maerke--afventer { background: var(--app-status-afventer-bg); color: var(--app-status-afventer-text); }
       .maerke--godkendt, .maerke--aktiv { background: var(--app-status-ok-bg); color: var(--app-status-ok-text); }
       .maerke--afvist { background: var(--app-status-neutral-bg); color: var(--app-status-neutral-text); border-color: currentColor; }
-      .maerke--fejlet { background: var(--app-status-fejl-bg); color: var(--app-status-fejl-text); }
+      .maerke--fejlet, .maerke--fejl { background: var(--app-status-fejl-bg); color: var(--app-status-fejl-text); }
       .linje--fejlet { border-color: var(--costa-color-accent); box-shadow: inset 6px 0 0 var(--costa-color-accent); }
       .besked { border: var(--costa-line); border-radius: var(--costa-radius); padding: var(--costa-space-m); background: var(--costa-color-surface); }
       .besked--fejl { border-color: var(--costa-color-accent); box-shadow: inset 6px 0 0 var(--costa-color-accent); }
@@ -220,6 +220,36 @@
       table.plan .tal-celle { text-align: right; font-family: var(--costa-font-mono); white-space: nowrap; }
       .tabel-ramme { overflow-x: auto; }
 
+
+      /* ---------- Kaffevogn: månedskalender ---------- */
+      .kal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--costa-space-xs); }
+      .kal__ugedag { font: 500 var(--costa-text-label) var(--costa-font-mono); text-transform: uppercase; letter-spacing: 0.06em; color: var(--costa-color-muted); text-align: center; padding-bottom: var(--costa-space-xs); }
+      .kal__dag {
+        min-height: 64px; padding: 0.6rem; display: grid; align-content: space-between; gap: 0.2rem; text-align: left;
+        border: var(--costa-line); border-radius: var(--costa-radius); background: var(--costa-color-surface); color: var(--costa-color-text);
+        font: 600 var(--costa-text-small) var(--costa-font-body); cursor: pointer;
+      }
+      @media (min-width: 750px) { .kal__dag { min-height: 88px; } }
+      .kal__dag:focus-visible { outline: var(--costa-line-width) solid var(--costa-color-accent); outline-offset: 2px; }
+      .kal__dag[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--costa-color-text); }
+      .kal__dag--tom { visibility: hidden; }
+      .kal__dag--fortid { color: var(--costa-color-muted); background: transparent; border-style: dashed; }
+      .kal__dag--betalt { background: var(--costa-color-harbor); color: var(--costa-color-harbor-text); border-color: var(--costa-color-harbor); }
+      .kal__dag--reserveret { background: var(--costa-kraft); }
+      .kal__dag--lukket { background: var(--costa-color-dark); color: var(--costa-color-dark-text); border-color: var(--costa-color-dark); }
+      .kal__dag--fejl { background: var(--costa-color-accent); color: var(--costa-color-accent-text); border-color: var(--costa-color-accent); }
+      .kal__tekst { font: 500 var(--costa-text-label) var(--costa-font-body); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .forklaring { display: flex; flex-wrap: wrap; gap: var(--costa-space-s); }
+      .maerke--betalt { background: var(--app-status-ok-bg); color: var(--app-status-ok-text); }
+      .maerke--reserveret { background: var(--app-status-afventer-bg); color: var(--app-status-afventer-text); }
+      .maerke--lukket { background: var(--costa-color-dark); color: var(--costa-color-dark-text); }
+      .maerke--annulleret { background: var(--app-status-neutral-bg); color: var(--app-status-neutral-text); border-color: currentColor; }
+      .felt textarea {
+        width: 100%; min-height: 96px; padding: var(--costa-space-s) var(--costa-space-m);
+        border: var(--costa-line); border-radius: var(--costa-radius); background: var(--costa-color-bg);
+        color: var(--costa-color-text); font: var(--costa-text-small) var(--costa-font-mono);
+      }
+
       @media print {
         .tabs, .ingen-print, ui-title-bar { display: none !important; }
         body { background: var(--costa-color-surface); }
@@ -231,6 +261,7 @@
       <a href="/api/admin" rel="home">Erhvervskunder</a>
       <a href="/api/admin-ansoegninger">Ansøgninger</a>
       <a href="/api/admin-aftaler">Aftaler</a>
+      <a href="/api/admin-kaffevogn">Kaffevogn</a>
       <a href="/api/admin-indstillinger">Indstillinger</a>
     </ui-nav-menu>
     <ui-title-bar id="titel" title="Erhvervskunder"></ui-title-bar>
@@ -239,6 +270,7 @@
       <nav class="tabs" aria-label="Faner">
         <a class="tab" href="/api/admin-ansoegninger" data-fane="ansoegninger">Ansøgninger <span class="tab__tal" id="tal-ansoegninger" hidden></span></a>
         <a class="tab" href="/api/admin-aftaler" data-fane="aftaler">Aftaler <span class="tab__tal" id="tal-aftaler" hidden></span></a>
+        <a class="tab" href="/api/admin-kaffevogn" data-fane="kaffevogn">Kaffevogn <span class="tab__tal" id="tal-kaffevogn" hidden></span></a>
         <a class="tab" href="/api/admin-indstillinger" data-fane="indstillinger">Indstillinger</a>
       </nav>
 
@@ -300,6 +332,41 @@
           </div>
         </div>
         <div id="aft-detalje" class="stack stack--l" hidden></div>
+      </section>
+
+
+      <!-- Kaffevogn -->
+      <section id="fane-kaffevogn" class="stack stack--l" hidden>
+        <div class="stack stack--s">
+          <h1>Kaffevogn</h1>
+          <p class="muted">Bookinger af kaffevognen. Kunderne booker og betaler selv. Tryk på en dag for at se den eller lukke den, f.eks. ved ferie.</p>
+        </div>
+        <div id="kv-fejl" class="besked besked--fejl" hidden></div>
+        <div class="kort stack">
+          <div class="row row--between">
+            <h2 id="kv-titel">Måned</h2>
+            <div class="row">
+              <button class="btn btn--rund" id="kv-forrige" aria-label="Forrige måned">←</button>
+              <button class="btn btn--rund" id="kv-naeste" aria-label="Næste måned">→</button>
+            </div>
+          </div>
+          <div class="forklaring small">
+            <span class="maerke maerke--betalt">Betalt</span>
+            <span class="maerke maerke--reserveret">I en kurv</span>
+            <span class="maerke maerke--lukket">Lukket</span>
+            <span class="maerke maerke--fejl">Skal tjekkes</span>
+          </div>
+          <div class="kal" id="kv-kalender" role="grid" aria-label="Kalender"></div>
+        </div>
+        <div id="kv-dag" class="stack" hidden></div>
+        <div class="kort stack">
+          <h2>Område og varsel</h2>
+          <div class="felter">
+            <label class="felt"><span class="label">Postnumre, vi kører til</span><textarea id="kv-postnumre" rows="3"></textarea><span class="muted small">Adskil med komma eller mellemrum. Andre postnumre får beskeden «Ring på 52 76 04 60, så finder vi en løsning».</span></label>
+            <label class="felt"><span class="label">Varsel</span><span class="med-enhed"><input type="number" inputmode="numeric" min="0" max="365" id="kv-varsel" /> dage</span><span class="muted small">Hvor mange dage før kunden mindst skal booke.</span></label>
+          </div>
+          <div class="handlinger"><button class="btn btn--primary" id="kv-gem">Gem område og varsel</button></div>
+        </div>
       </section>
 
       <!-- Indstillinger -->
