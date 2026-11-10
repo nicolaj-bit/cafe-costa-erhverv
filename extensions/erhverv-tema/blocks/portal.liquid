@@ -155,10 +155,17 @@
               {%- if block.settings.contact_phone != blank -%}<p><a href="tel:{{ block.settings.contact_phone | remove: ' ' }}">{{ block.settings.contact_phone | escape }}</a></p>{%- endif -%}
               {%- if block.settings.contact_email != blank -%}<p><a href="mailto:{{ block.settings.contact_email }}">{{ block.settings.contact_email | escape }}</a></p>{%- endif -%}
             </div>
-            <div class="costa-card erhverv-card erhverv-card--soon">
+            {%- comment -%}
+              Fast levering styres af Shopify Subscriptions. Kunden vælger den under
+              «Vælg varer»; pause, spring over og opsig sker på kundens konto.
+            {%- endcomment -%}
+            <div class="costa-card erhverv-card">
               <p class="costa-label">Fast levering</p>
-              <p class="erhverv-soon">Kommer snart</p>
-              <p class="costa-muted">Få kaffen leveret fast hver uge eller måned.</p>
+              <p>Få kaffen leveret fast hver uge, hver 2. uge eller hver måned. Vælg «Fast levering» ved kaffen — kortet gemmes ved første køb, og leveringerne trækkes automatisk.</p>
+              <div class="erhverv-card__actions">
+                <button type="button" class="costa-button costa-button--primary" data-erhverv-goto="varer">Vælg kaffe</button>
+                <a class="costa-button" href="{{ routes.account_url }}">Se og ændr faste leveringer</a>
+              </div>
             </div>
           </div>
         </section>
@@ -236,6 +243,26 @@
                               <span>{{ variant.title | escape }}</span>
                             </label>
                           {%- endfor -%}
+                        </fieldset>
+                      {%- endif -%}
+                      {%- if product.selling_plan_groups.size > 0 -%}
+                        {%- comment -%}
+                          Fast levering fra Shopify Subscriptions. Listen med rytmer er slået
+                          fra, indtil kunden vælger «Fast levering», så et engangskøb ikke
+                          sender en selling_plan med.
+                        {%- endcomment -%}
+                        <fieldset class="costa-pills erhverv-plan" data-erhverv-plan>
+                          <legend class="visually-hidden">Levering</legend>
+                          <label class="costa-pill"><input type="radio" name="erhverv-kob-{{ block.id }}-{{ product.id }}" value="en" checked data-erhverv-plan-valg><span>Én gang</span></label>
+                          <label class="costa-pill"><input type="radio" name="erhverv-kob-{{ block.id }}-{{ product.id }}" value="fast" data-erhverv-plan-valg><span>Fast levering</span></label>
+                          <label class="visually-hidden" for="Plan-{{ block.id }}-{{ product.id }}">Hvor ofte</label>
+                          <select id="Plan-{{ block.id }}-{{ product.id }}" name="selling_plan" class="costa-select costa-select--small erhverv-plan__rytme" disabled hidden data-erhverv-plan-rytme>
+                            {%- for group in product.selling_plan_groups -%}
+                              {%- for plan in group.selling_plans -%}
+                                <option value="{{ plan.id }}">{{ plan.name | escape }}</option>
+                              {%- endfor -%}
+                            {%- endfor -%}
+                          </select>
                         </fieldset>
                       {%- endif -%}
                       <input type="hidden" name="quantity" value="1">
