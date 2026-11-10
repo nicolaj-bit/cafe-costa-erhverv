@@ -36,6 +36,8 @@
 .erhverv-plan { display: flex; flex-wrap: wrap; align-items: center; gap: var(--costa-space-xs); border: 0; padding: 0; margin: 0 0 var(--costa-space-s); }
 .erhverv-plan__rytme { flex: 1 1 100%; }
 .erhverv-plan__rytme[hidden] { display: none; }
+.erhverv-plan__note { flex: 1 1 100%; margin: 0; }
+.erhverv-plan__note[hidden] { display: none; }
 .erhverv-soon { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); font-size: var(--costa-text-h2); line-height: 1; color: var(--costa-color-muted); }
 .erhverv-big { font-family: var(--costa-font-heading); font-weight: var(--costa-font-heading-weight); font-size: var(--costa-text-display); line-height: 0.9; color: var(--costa-color-accent); }
 .erhverv-contact-name { font-weight: 600; }
