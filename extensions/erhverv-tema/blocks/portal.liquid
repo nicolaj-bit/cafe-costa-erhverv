@@ -66,7 +66,11 @@
               <p class="costa-label">Erhvervskunde</p>
               <h2 class="erhverv__subtitle">Log ind</h2>
               <p>Log ind med den e-mail, I ansøgte med, for at se jeres aftale og bestille til erhvervspris.</p>
-              <a class="costa-button costa-button--primary" href="{{ routes.account_login_url }}">Log ind</a>
+              {%- comment -%}
+                storefront_login_url sender kunden tilbage til portalen efter
+                login. account_login_url ender på kontosiden.
+              {%- endcomment -%}
+              <a class="costa-button costa-button--primary" href="{{ routes.storefront_login_url }}">Log ind</a>
             </div>
           {%- else -%}
             <div class="costa-card erhverv-card">
